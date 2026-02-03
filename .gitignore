@@ -1,0 +1,15 @@
+# Dependencies
+client/node_modules/
+server/node_modules/
+
+# Environment Secrets (Crucial for Supabase security)
+client/.env
+client/.env.local
+server/.env
+
+# Production builds
+client/dist/
+client/build/
+
+# OS files
+.DS_Store

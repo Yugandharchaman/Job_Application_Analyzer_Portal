@@ -1,0 +1,46 @@
+.sidebar {
+  width: 260px;
+  height: calc(100vh - 70px);
+  background: linear-gradient(180deg, #0b1023, #070b1a);
+  padding: 20px 16px;
+  position: fixed;
+  top: 70px;
+  left: 0;
+  color: #cfd3ff;
+  font-family: "Segoe UI", sans-serif;
+}
+
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  color: #b6bbff !important;
+  transition: all 0.25s ease;
+  font-size: 15px;
+}
+
+.sidebar-item .icon {
+  color: #9aa2ff;
+}
+
+.sidebar-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff !important;
+}
+
+.sidebar-item.active {
+  background: linear-gradient(
+    90deg,
+    rgba(108, 93, 255, 0.35),
+    rgba(108, 93, 255, 0.15)
+  );
+  color: #bfa8ff !important;
+  box-shadow: inset 0 0 12px rgba(120, 100, 255, 0.25);
+}
+
+.sidebar-item.active .icon {
+  color: #a98bff;
+}
