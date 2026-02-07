@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Card, Container, Badge, ProgressBar, Row, Col, Form, Modal } from "react-bootstrap";
-import { ChevronLeft, ChevronRight, Zap, Activity, PieChart, BarChart, Cpu, Globe, Award, Star, TrendingUp, Shield } from "react-feather";
+import { ChevronLeft, ChevronRight, Zap, Activity,Cpu, Globe, Award, Star, TrendingUp, Shield } from "react-feather";
 import { supabase } from "../supabaseClient"; 
 
 const STORAGE_KEY = "job_applications"; 
@@ -49,7 +49,8 @@ const CalendarPage = () => {
   const [showStreakModal, setShowStreakModal] = useState(false);
   const [streakCount, setStreakCount] = useState(0);
 
-  const fetchData = async () => {
+  // MODIFIED: Wrapped in useCallback to fix dependency error
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -101,11 +102,12 @@ const CalendarPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [today]); // today is a dependency here
 
+  // MODIFIED: Added fetchData to dependencies
   useEffect(() => {
     fetchData();
-  }, [today]);
+  }, [fetchData]);
 
   const monthOptions = useMemo(() => {
     const options = [];

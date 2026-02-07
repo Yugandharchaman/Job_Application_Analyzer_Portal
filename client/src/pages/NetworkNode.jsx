@@ -3,7 +3,7 @@ import { Row, Col, Container, Toast, ToastContainer, Form, Button } from "react-
 import emailjs from "@emailjs/browser";
 import { 
   GitHub, Linkedin, Mail, ArrowRight, 
-  Globe, Shield, Smartphone, Award,
+  Globe, Shield,
   Clock, Zap, Code, Briefcase, Check, Smartphone as MobileIcon,
   MessageSquare, Send
 } from "react-feather";

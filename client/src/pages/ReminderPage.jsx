@@ -17,12 +17,10 @@ const ReminderPage = () => {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [filter, setFilter] = useState("Ongoing");
-  const [sessionUser, setSessionUser] = useState(null); 
 
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      setSessionUser(user);
       
       if (user) {
         await fetchReminders(user.id);
@@ -92,9 +90,6 @@ const ReminderPage = () => {
     const now = new Date();
     const eventDate = new Date(dateTime);
     
-    // Logic for expiry tab: 
-    // If current time is past event time, it is 'Expired'
-    // If current time is before event time, it is 'Ongoing'
     return eventDate > now ? "Ongoing" : "Expired";
   };
 
@@ -107,19 +102,16 @@ const ReminderPage = () => {
     });
   };
 
-  // NEW LOGIC: Filter out any reminder that is more than 1 month old
   const filteredReminders = reminders.filter(r => {
     const now = new Date();
     const eventDate = new Date(r.dateTime);
     const oneMonthAfterEvent = new Date(eventDate);
     oneMonthAfterEvent.setMonth(oneMonthAfterEvent.getMonth() + 1);
 
-    // If the current date is past (Event Date + 1 Month), remove it completely from UI
     if (now > oneMonthAfterEvent) {
       return false;
     }
 
-    // Otherwise, use your standard filter (Ongoing vs Expired)
     return getStatus(r.dateTime) === filter;
   });
 

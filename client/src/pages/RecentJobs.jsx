@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Card, Badge } from "react-bootstrap";
 import { 
-  ExternalLink, Shield, Zap, Globe, 
-  ChevronLeft, ChevronRight, Layers, AlertCircle,
-  Cpu, Terminal, Activity
+  ExternalLink, Shield, Globe, 
+  ChevronLeft, ChevronRight, Layers,
+  Cpu, Activity
 } from "react-feather";
 
 const RecentJobs = () => {

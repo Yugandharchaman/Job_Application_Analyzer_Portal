@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from "react"; 
-import { Nav, Modal, Button, Badge, Form, Row, Col, Spinner } from "react-bootstrap";
+import { Nav, Modal, Button, Form, Row, Col, Spinner } from "react-bootstrap";
 import { Link, useLocation, useNavigate } from "react-router-dom"; 
 import { supabase } from '../supabaseClient'; 
 import toast from "react-hot-toast"; 
 import {
   Home, PlusSquare, Briefcase, Clock, Calendar, Bell, XCircle, FileText,
-  LogOut, Target, Book, User,MessageCircle, Mail, Shield, Phone, MapPin, GitHub, Linkedin,
-  ExternalLink, Edit3, Save, CheckCircle, Camera, Upload, Download, File
+  LogOut, Target, Book, User,MessageCircle,
+ Edit3, Save, Camera, Upload, Download, File
 } from "react-feather";
 
 const SideNavbar = () => {

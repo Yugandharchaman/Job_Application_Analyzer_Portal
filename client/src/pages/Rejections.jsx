@@ -1,43 +1,44 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Container, Row, Col, Card, Badge, Form, InputGroup, Pagination, Placeholder, Button } from "react-bootstrap";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, XCircle, Coffee, Zap, BarChart2, Save, Calendar, ArrowRight, AlertCircle, Target, User, Heart } from "react-feather";
+import { Search, XCircle, Coffee, Zap, BarChart2, Save, Calendar, ArrowRight, AlertCircle, Target} from "react-feather";
 import toast, { Toaster } from "react-hot-toast";
 import { supabase } from "../supabaseClient"; 
 
 const STORAGE_KEY = "job_applications";
+
+// Moved outside to resolve useMemo dependency warning and prevent unnecessary re-renders
+const quotes = [
+  { text: "Failure is the opportunity to begin again more intelligently.", author: "Henry Ford" },
+  { text: "A rejection is nothing more than a necessary step in the pursuit of success.", author: "Bo Bennett" },
+  { text: "The master has failed more times than the beginner has tried.", author: "Stephen McCranie" },
+  { text: "Success consists of going from failure to failure without loss of enthusiasm.", author: "Winston Churchill" },
+  { text: "Everything you’ve ever wanted is on the other side of fear.", author: "George Addair" },
+  { text: "Rejection is merely a redirection; a course correction to your destiny.", author: "Bryant McGill" },
+  { text: "Our greatest glory is not in never falling, but in rising every time we fall.", author: "Confucius" },
+  { text: "I have not failed. I've just found 10,000 ways that won't work.", author: "Thomas Edison" },
+  { text: "Hardships often prepare ordinary people for an extraordinary destiny.", author: "C.S. Lewis" },
+  { text: "Don't be embarrassed by your failures, learn from them and start again.", author: "Richard Branson" },
+  { text: "Rejection is an opportunity for your selection to be better.", author: "Bernard Kelvin Clive" },
+  { text: "The only limit to our realization of tomorrow will be our doubts of today.", author: "Franklin d. Roosevelt" },
+  { text: "It does not matter how slowly you go as long as you do not stop.", author: "Confucius" },
+  { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
+  { text: "Persistence guarantees that results are inevitable.", author: "Paramahansa Yogananda" },
+  { text: "Every 'No' brings me closer to a 'Yes'.", author: "Mark Victor Hansen" },
+  { text: "Your dream doesn't have an expiration date. Take a deep breath and try again.", author: "Unknown" },
+  { text: "The harder the conflict, the more glorious the triumph.", author: "Thomas Paine" },
+  { text: "A river cuts through rock, not because of its power, but because of its persistence.", author: "James N. Watkins" },
+  { text: "You are not your setbacks; you are the person who survives them.", author: "Unknown" }
+];
 
 const Rejections = () => {
   const [allRejected, setAllRejected] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [userName, setUserName] = useState("Seeker");
+  // Removed unused userName state to resolve ESLint warning
   const itemsPerPage = 3;
 
-  const quotes = [
-    { text: "Failure is the opportunity to begin again more intelligently.", author: "Henry Ford" },
-    { text: "A rejection is nothing more than a necessary step in the pursuit of success.", author: "Bo Bennett" },
-    { text: "The master has failed more times than the beginner has tried.", author: "Stephen McCranie" },
-    { text: "Success consists of going from failure to failure without loss of enthusiasm.", author: "Winston Churchill" },
-    { text: "Everything you’ve ever wanted is on the other side of fear.", author: "George Addair" },
-    { text: "Rejection is merely a redirection; a course correction to your destiny.", author: "Bryant McGill" },
-    { text: "Our greatest glory is not in never falling, but in rising every time we fall.", author: "Confucius" },
-    { text: "I have not failed. I've just found 10,000 ways that won't work.", author: "Thomas Edison" },
-    { text: "Hardships often prepare ordinary people for an extraordinary destiny.", author: "C.S. Lewis" },
-    { text: "Don't be embarrassed by your failures, learn from them and start again.", author: "Richard Branson" },
-    { text: "Rejection is an opportunity for your selection to be better.", author: "Bernard Kelvin Clive" },
-    { text: "The only limit to our realization of tomorrow will be our doubts of today.", author: "Franklin d. Roosevelt" },
-    { text: "It does not matter how slowly you go as long as you do not stop.", author: "Confucius" },
-    { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
-    { text: "Persistence guarantees that results are inevitable.", author: "Paramahansa Yogananda" },
-    { text: "Every 'No' brings me closer to a 'Yes'.", author: "Mark Victor Hansen" },
-    { text: "Your dream doesn't have an expiration date. Take a deep breath and try again.", author: "Unknown" },
-    { text: "The harder the conflict, the more glorious the triumph.", author: "Thomas Paine" },
-    { text: "A river cuts through rock, not because of its power, but because of its persistence.", author: "James N. Watkins" },
-    { text: "You are not your setbacks; you are the person who survives them.", author: "Unknown" }
-  ];
-  
   const activeQuote = useMemo(() => quotes[Math.floor(Math.random() * quotes.length)], []);
 
   const fetchPersonalData = async () => {
@@ -46,7 +47,6 @@ const Rejections = () => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
-        setUserName(user.user_metadata?.full_name || user.email.split('@')[0]);
         const { data, error } = await supabase
           .from(STORAGE_KEY)
           .select("*")

@@ -1,4 +1,4 @@
-import { Card, Row, Col, Spinner, Badge } from "react-bootstrap"; 
+import { Card, Row, Col, Spinner} from "react-bootstrap"; 
 import { useEffect, useState } from "react";
 import {
   PieChart,

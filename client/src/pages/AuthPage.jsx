@@ -2,7 +2,7 @@ import { supabase } from '../supabaseClient';
 import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row, Col, Form, Button } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Layout, List, Calendar, Bell, Eye, EyeOff, Activity, Zap, ArrowRight, Loader, CheckCircle } from 'react-feather';
+import { Layout, List, Calendar, Bell, Eye, EyeOff, Activity, Zap, ArrowRight, Loader, CheckCircle } from 'react-feather';
 import toast, { Toaster } from 'react-hot-toast';
 
 const AuthPage = () => {
