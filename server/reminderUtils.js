@@ -14,7 +14,7 @@ const transporter = nodemailer.createTransport({
 
 const sendEmail = async (to, subject, text) => {
   const mailOptions = { 
-    from: `"Job Tracker Platform" <carrer.entry.hub@gmail.com>`, 
+    from: `"Job Analyzer Platform" <carrer.entry.hub@gmail.com>`, 
     to, 
     subject, 
     text 
