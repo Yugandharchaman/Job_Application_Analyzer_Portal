@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import { supabase } from "../supabaseClient"; 
 import { Bell, Clock, Calendar, AlertCircle, Info, Loader } from "react-feather";
 import toast, { Toaster } from "react-hot-toast";
 
@@ -17,22 +17,33 @@ const ReminderPage = () => {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [filter, setFilter] = useState("Ongoing");
+  const [sessionUser, setSessionUser] = useState(null); 
 
   useEffect(() => {
     const init = async () => {
-      await fetchReminders();
+      const { data: { user } } = await supabase.auth.getUser();
+      setSessionUser(user);
+      
+      if (user) {
+        await fetchReminders(user.id);
+      }
       setTimeout(() => setInitialLoading(false), 1500);
     };
     init();
   }, []);
 
-  const fetchReminders = async () => {
+  const fetchReminders = async (userId) => {
     try {
-      const res = await axios.get("http://localhost:5000/reminders");
-      const sortedData = [...res.data].reverse();
-      setReminders(sortedData);
+      const { data, error } = await supabase
+        .from("reminders")
+        .select("*")
+        .eq("user_id", userId) 
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setReminders(data || []);
     } catch (err) {
-      console.error("Could not fetch reminders");
+      console.error("Fetch Error:", err);
     }
   };
 
@@ -40,14 +51,27 @@ const ReminderPage = () => {
     e.preventDefault();
     setLoading(true);
 
-    const dateTime = `${formData.date}T${formData.time}`;
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      toast.error("Session expired. Please log in.");
+      setLoading(false);
+      return;
+    }
+
+    const dateTimeISO = new Date(`${formData.date}T${formData.time}`).toISOString();
 
     try {
-      await axios.post("http://localhost:5000/reminders", {
-        name: formData.name,
-        email: formData.email,
-        dateTime: dateTime
-      });
+      const { error } = await supabase
+        .from("reminders")
+        .insert([{
+          name: formData.name,
+          email: formData.email,
+          dateTime: dateTimeISO,
+          user_id: user.id 
+        }]);
+
+      if (error) throw error;
       
       toast.success("Reminder Scheduled Successfully!", {
         style: { borderRadius: '10px', background: '#333', color: '#fff' },
@@ -55,9 +79,10 @@ const ReminderPage = () => {
       });
 
       setFormData({ name: "", email: "", date: today, time: "" });
-      fetchReminders();
+      fetchReminders(user.id);
     } catch (err) {
-      toast.error("Failed to schedule. Check server connection.");
+      console.error("SUPABASE ERROR:", err.message || err);
+      toast.error(`Error: ${err.message || "Connection failed"}`);
     } finally {
       setTimeout(() => setLoading(false), 800);
     }
@@ -66,6 +91,10 @@ const ReminderPage = () => {
   const getStatus = (dateTime) => {
     const now = new Date();
     const eventDate = new Date(dateTime);
+    
+    // Logic for expiry tab: 
+    // If current time is past event time, it is 'Expired'
+    // If current time is before event time, it is 'Ongoing'
     return eventDate > now ? "Ongoing" : "Expired";
   };
 
@@ -78,9 +107,22 @@ const ReminderPage = () => {
     });
   };
 
-  const filteredReminders = reminders.filter(r => getStatus(r.dateTime) === filter);
+  // NEW LOGIC: Filter out any reminder that is more than 1 month old
+  const filteredReminders = reminders.filter(r => {
+    const now = new Date();
+    const eventDate = new Date(r.dateTime);
+    const oneMonthAfterEvent = new Date(eventDate);
+    oneMonthAfterEvent.setMonth(oneMonthAfterEvent.getMonth() + 1);
 
-  // --- SUITABLE LOADER COMPONENT ---
+    // If the current date is past (Event Date + 1 Month), remove it completely from UI
+    if (now > oneMonthAfterEvent) {
+      return false;
+    }
+
+    // Otherwise, use your standard filter (Ongoing vs Expired)
+    return getStatus(r.dateTime) === filter;
+  });
+
   if (initialLoading) return (
     <div style={styles.uniqueLoaderWrapper}>
       <style>
@@ -116,7 +158,6 @@ const ReminderPage = () => {
     <div style={{ padding: "40px", color: "white", maxWidth: "1200px", margin: "auto", position: "relative" }}>
       <Toaster position="top-right" reverseOrder={false} />
 
-      {/* Submission Overlay Loader */}
       {loading && (
         <div style={loaderOverlayStyle}>
            <Loader size={40} color="#6c5ddf" style={{ animation: "rotateClock 1s linear infinite" }} />
@@ -125,7 +166,6 @@ const ReminderPage = () => {
       
       <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1.8fr", gap: "50px", opacity: loading ? 0.4 : 1, transition: "opacity 0.3s ease" }}>
         
-        {/* Left Side: Input Form */}
         <section>
           <div style={cardStyle}>
             <h3 style={{ marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px", color: "#101341", fontSize: "1.2rem" }}>
@@ -197,7 +237,6 @@ const ReminderPage = () => {
           </div>
         </section>
 
-        {/* Right Side: List & Filter */}
         <section>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
             <h3 style={{ fontSize: "1.2rem", color: "#101341", display: "flex", alignItems: "center", gap: "10px", margin: 0 }}>
@@ -272,39 +311,19 @@ const ReminderPage = () => {
   );
 };
 
-// --- Styles ---
-
 const styles = {
   uniqueLoaderWrapper: { height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#f8fafc' },
   loaderCore: { width: '70px', height: '70px', background: '#fff', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 10px 30px rgba(108, 93, 223, 0.2)', zIndex: 5 }
 };
-
-const loaderOverlayStyle = {
-  position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
-  background: "rgba(255, 255, 255, 0.6)", backdropFilter: "blur(4px)",
-  display: "flex", justifyContent: "center", alignItems: "center",
-  zIndex: 10, borderRadius: "28px"
-};
-
-const cardStyle = {
-  background: "#fff", padding: "35px", borderRadius: "28px",
-  border: "1px solid #eef0f2", boxShadow: "0 20px 40px rgba(0,0,0,0.05)"
-};
-
+const loaderOverlayStyle = { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(255, 255, 255, 0.6)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 10, borderRadius: "28px" };
+const cardStyle = { background: "#fff", padding: "35px", borderRadius: "28px", border: "1px solid #eef0f2", boxShadow: "0 20px 40px rgba(0,0,0,0.05)" };
 const labelStyle = { display: "flex", alignItems: "center", marginBottom: "10px", fontSize: "13px", color: "#4a5568", fontWeight: "700" };
-
 const inputStyle = { width: "100%", padding: "14px", borderRadius: "12px", border: "2px solid #edf2f7", background: "#f7fafc", color: "#2d3748", outline: "none", fontSize: "14px", transition: "border-color 0.2s" };
-
 const buttonStyle = { marginTop: "15px", padding: "16px", borderRadius: "14px", color: "#fff", border: "none", fontWeight: "700", cursor: "pointer", transition: "0.3s all ease", fontSize: "16px" };
-
 const filterTabStyle = { border: "none", padding: "8px 20px", borderRadius: "10px", fontSize: "13px", fontWeight: "700", cursor: "pointer", transition: "0.3s all" };
-
 const noteStyle = { marginTop: "30px", padding: "18px", background: "#f8faff", borderRadius: "16px", borderLeft: "5px solid #6c5ddf", fontSize: "13px", color: "#4a5568", display: "flex", gap: "12px", lineHeight: "1.6" };
-
 const listEntryStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 22px", background: "#fff", borderRadius: "20px", border: "1px solid #f0f0f0", boxShadow: "0 4px 6px rgba(0,0,0,0.02)" };
-
 const iconBoxStyle = { padding: "12px", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center" };
-
 const hrStyle = { border: "none", height: "1px", background: "linear-gradient(90deg, #e2e8f0 0%, rgba(226,232,240,0) 100%)", marginBottom: "25px" };
 
 export default ReminderPage;

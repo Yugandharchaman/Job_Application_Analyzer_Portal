@@ -1,10 +1,11 @@
-import { Card, Row, Col, Badge, Form, Dropdown, Pagination, Spinner } from "react-bootstrap"; 
+import { Card, Row, Col, Badge, Form, Dropdown, Pagination, Spinner } from "react-bootstrap";
 import { useEffect, useState } from "react";
 import { FaDownload } from "react-icons/fa";
 import NoJobsImg from "../assets/No_Jobs.png";
-import toast, { Toaster } from "react-hot-toast"; 
+import toast, { Toaster } from "react-hot-toast";
+// IMPORT YOUR SUPABASE CLIENT
+import { supabase } from "../supabaseClient"; 
 
-const STORAGE_KEY = "job_applications";
 const NAVBAR_COLOR = "#11102e";
 const jobsPerPage = 6;
 const maxPagesToShow = 4;
@@ -28,28 +29,42 @@ const AddedJobs = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
 
+  // Load data once on mount
   useEffect(() => {
     loadData();
   }, []);
 
-  useEffect(() => {
-    setLoading(true);
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 800); 
-    return () => clearTimeout(timer);
-  }, [filterDate]);
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
 
-  const loadData = () => {
-    const storedJobs = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-    setJobs([...storedJobs].reverse());
-    setLoading(false);
+      if (!user) {
+        toast.error("Please login to view your jobs");
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("job_applications")
+        .select("*")
+        .eq("user_id", user.id) 
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setJobs(data || []);
+    } catch (error) {
+      toast.error("Error fetching jobs from cloud");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // Instant filtering based on state (No loading needed here)
   const filteredJobs = jobs.filter((job) => {
     const matchSearch = job.company.toLowerCase().includes(search.toLowerCase());
-    // Updated to check both potential date keys
-    const jobEntryDate = job.appliedDate || job.date; 
+    const jobEntryDate = job.applieddate || job.appliedDate || job.date;
     const matchDate = jobEntryDate === filterDate;
     return matchSearch && matchDate;
   });
@@ -74,38 +89,37 @@ const AddedJobs = () => {
 
   const downloadResume = (job) => {
     try {
-        const base64 = job.resumeData;
-        const fileName = job.resumeName || `${job.company}_Resume.pdf`;
+      const base64 = job.resume_data || job.resumeData; 
+      const fileName = job.resume_name || job.resumeName || `${job.company}_Resume.pdf`;
 
-        if (!base64) {
-            toast.error("No resume file found for this application");
-            return;
-        }
+      if (!base64) {
+        toast.error("No resume file found for this application");
+        return;
+      }
 
-        const link = document.createElement("a");
-        link.href = base64;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        toast.success("Downloading Resume...", {
-            style: { borderRadius: '10px', background: '#333', color: '#fff' },
-        });
+      const link = document.createElement("a");
+      link.href = base64;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success("Downloading Resume...", {
+        style: { borderRadius: "10px", background: "#333", color: "#fff" },
+      });
     } catch (error) {
-        toast.error("Error downloading file");
-        console.error(error);
+      toast.error("Error downloading file");
+      console.error(error);
     }
   };
 
   const renderJobCard = (job, index) => {
-    const resumeName = job.resumeName || "Not Uploaded";
-    const hasResume = job.resumeData;
-    // Fallback for UI display
-    const displayDate = job.appliedDate || job.date;
+    const resumeName = job.resume_name || job.resumeName || "Not Uploaded";
+    const hasResume = job.resume_data || job.resumeData;
+    const displayDate = job.applieddate || job.appliedDate || job.date;
 
     return (
-      <Col key={index} xs={12} md={6} lg={4}>
+      <Col key={job.id || index} xs={12} md={6} lg={4}>
         <Card className="h-100 shadow-sm job-card p-3">
           <Card.Body>
             <div className="d-flex justify-content-between mb-2">
@@ -118,14 +132,27 @@ const AddedJobs = () => {
                   {Object.keys(statusColors).map((status) => (
                     <Dropdown.Item
                       key={status}
-                      onClick={() => {
+                      onClick={async () => {
+                        const { error } = await supabase
+                          .from("job_applications")
+                          .update({ status: status })
+                          .eq("id", job.id);
+
+                        if (error) {
+                          toast.error("Failed to update status");
+                          return;
+                        }
+
                         const updated = [...jobs];
-                        updated[jobs.indexOf(job)].status = status;
-                        setJobs(updated);
-                        localStorage.setItem(STORAGE_KEY, JSON.stringify([...updated].reverse()));
+                        const jobIdx = updated.findIndex((j) => j.id === job.id);
+                        if (jobIdx > -1) {
+                            updated[jobIdx].status = status;
+                            setJobs(updated);
+                        }
+
                         toast.success(`Status updated to ${status}`, {
-                          style: { borderRadius: '10px', background: '#333', color: '#fff' },
-                          iconTheme: { primary: NAVBAR_COLOR, secondary: '#fff' },
+                          style: { borderRadius: "10px", background: "#333", color: "#fff" },
+                          iconTheme: { primary: NAVBAR_COLOR, secondary: "#fff" },
                         });
                       }}
                     >
@@ -142,27 +169,27 @@ const AddedJobs = () => {
             <p className="mb-1 small"><strong>Salary:</strong> {job.salary} LPA</p>
             <p className="mb-1 small"><strong>Bond:</strong> {job.bond}</p>
             <p className="mb-1 small"><strong>Applied Date:</strong> {displayDate}</p>
-            
+
             <div className="mt-2 d-flex align-items-center justify-content-between">
               <span className="text-truncate text-muted small" style={{ maxWidth: 160, fontSize: "13px" }}>
                 <strong>Resume:</strong> {resumeName}
               </span>
               {hasResume && (
-                <div 
-                    title="Download Resume"
-                    style={{ 
-                        cursor: "pointer", 
-                        backgroundColor: "#f4f4f4", 
-                        padding: "8px", 
-                        borderRadius: "50%",
-                        display: "flex",
-                        transition: "0.2s" 
-                    }}
-                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#e0e0e0"}
-                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#f4f4f4"}
-                    onClick={() => downloadResume(job)}
+                <div
+                  title="Download Resume"
+                  style={{
+                    cursor: "pointer",
+                    backgroundColor: "#f4f4f4",
+                    padding: "8px",
+                    borderRadius: "50%",
+                    display: "flex",
+                    transition: "0.2s",
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#e0e0e0")}
+                  onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#f4f4f4")}
+                  onClick={() => downloadResume(job)}
                 >
-                    <FaDownload size={14} style={{ color: NAVBAR_COLOR }} />
+                  <FaDownload size={14} style={{ color: NAVBAR_COLOR }} />
                 </div>
               )}
             </div>
@@ -177,8 +204,8 @@ const AddedJobs = () => {
       <Toaster position="top-right" />
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h4 className="fw-semibold">Recently Applied Jobs 🎉</h4>
-        <Card className="text-center px-3 py-2" style={{ backgroundColor: NAVBAR_COLOR, color: "#fff" }}>
-          <h6 className="mb-1">{dateCardText}</h6>
+        <Card className="text-center px-3 py-2" style={{ backgroundColor: NAVBAR_COLOR, color: "#fff", border: "none", borderRadius: "12px" }}>
+          <h6 className="mb-1 small opacity-75">{dateCardText}</h6>
           <Badge bg="light" text="dark" pill>{countForDate}</Badge>
         </Card>
       </div>
@@ -186,13 +213,13 @@ const AddedJobs = () => {
       <div className="d-flex gap-3 justify-content-end mb-4">
         <Form.Control
           placeholder="Search by company Name"
-          style={{ maxWidth: 260 }}
+          style={{ maxWidth: 260, borderRadius: "8px" }}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
         <Form.Control
           type="date"
-          style={{ maxWidth: 200 }}
+          style={{ maxWidth: 200, borderRadius: "8px" }}
           value={filterDate}
           max={todayStr}
           onChange={(e) => {
@@ -204,22 +231,25 @@ const AddedJobs = () => {
 
       {loading ? (
         <div className="text-center py-5" style={{ minHeight: "300px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <Spinner animation="border" style={{ color: NAVBAR_COLOR, width: '3rem', height: '3rem' }} />
+          <Spinner animation="border" style={{ color: NAVBAR_COLOR, width: "3rem", height: "3rem" }} />
         </div>
       ) : filteredJobs.length === 0 ? (
-        <div className="text-center py-5">
-          <img src={NoJobsImg} alt="No jobs" style={{ maxWidth: 400 }} />
+        <div className="text-center py-5 d-flex flex-column align-items-center">
+          <img src={NoJobsImg} alt="No jobs" style={{ maxWidth: 400, opacity: 0.8 }} />
+          <h5 className="mt-3 text-muted">No applications found for this selection.</h5>
         </div>
       ) : (
         <div className="pb-5">
-          <Row className="g-4 mb-5">{currentJobs.map(renderJobCard)}</Row>
+          <Row className="g-4 mb-5">
+            {currentJobs.map((job, idx) => renderJobCard(job, idx))}
+          </Row>
 
           {totalPages > 1 && (
             <div className="d-flex justify-content-center mt-5 mb-4">
               <Pagination>
                 <Pagination.First onClick={() => setCurrentPage(1)} disabled={currentPage === 1} />
-                <Pagination.Prev onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} />
-                
+                <Pagination.Prev onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1} />
+
                 {startPage > 1 && (
                   <>
                     <Pagination.Item onClick={() => setCurrentPage(1)}>1</Pagination.Item>
@@ -244,7 +274,7 @@ const AddedJobs = () => {
                   </>
                 )}
 
-                <Pagination.Next onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} />
+                <Pagination.Next onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} />
                 <Pagination.Last onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} />
               </Pagination>
             </div>
@@ -256,13 +286,14 @@ const AddedJobs = () => {
         {`
           .job-card {
             border-radius: 12px;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease-in-out;
             border: 1px solid #e0e0e0;
+            background: white;
           }
           .job-card:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 14px 35px rgba(17,16,46,0.25);
-            border: 2px solid ${NAVBAR_COLOR};
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(17,16,46,0.1) !important;
+            border: 1px solid ${NAVBAR_COLOR};
           }
           .page-item.active .page-link {
             background-color: ${NAVBAR_COLOR} !important;
@@ -272,8 +303,9 @@ const AddedJobs = () => {
           .page-link {
             color: ${NAVBAR_COLOR};
             padding: 8px 16px;
-            border-radius: 4px;
+            border-radius: 6px;
             margin: 0 2px;
+            border: 1px solid #dee2e6;
           }
         `}
       </style>

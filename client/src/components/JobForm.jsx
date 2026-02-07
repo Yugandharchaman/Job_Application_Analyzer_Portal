@@ -11,15 +11,15 @@ import {
 import toast, { Toaster } from "react-hot-toast";
 import Confetti from "react-confetti"; 
 import { useWindowSize } from "react-use"; 
+// --- SUPABASE IMPORT ---
+import { supabase } from "../supabaseClient"; // Adjust path if needed
 
-const STORAGE_KEY = "job_applications";
-const PERSISTED_RESUME_KEY = "user_default_resume"; // Key for the persistent resume
 const NAVBAR_COLOR = "#11102e";
 
 const JobForm = () => {
   const today = new Date().toISOString().split("T")[0];
   const { width, height } = useWindowSize(); 
-  const fileInputRef = useRef(null); // Ref to trigger the hidden file input
+  const fileInputRef = useRef(null); 
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
@@ -38,39 +38,60 @@ const JobForm = () => {
     resumeData: "", 
   });
 
-  // Load persistent resume on component mount
   useEffect(() => {
-    const savedResume = JSON.parse(localStorage.getItem(PERSISTED_RESUME_KEY));
-    if (savedResume) {
-      setFormData((prev) => ({
-        ...prev,
-        resumeName: savedResume.name,
-        resumeData: savedResume.data,
-      }));
-    }
+    const loadUserResume = async () => {
+      // Create a promise that resolves after 1.5 seconds to force a loading state
+      const delay = new Promise((resolve) => setTimeout(resolve, 1500));
 
-    const timer = setTimeout(() => setPageLoading(false), 800);
-    return () => clearTimeout(timer);
+      try {
+        const [{ data: { user } }] = await Promise.all([
+          supabase.auth.getUser(),
+          delay
+        ]);
+
+        if (user) {
+          // Create a unique key for THIS user
+          const userResumeKey = `resume_${user.id}`;
+          const savedResume = JSON.parse(localStorage.getItem(userResumeKey));
+          
+          if (savedResume) {
+            setFormData((prev) => ({
+              ...prev,
+              resumeName: savedResume.name,
+              resumeData: savedResume.data,
+            }));
+          }
+        }
+      } catch (error) {
+        console.error("Error during load:", error);
+      } finally {
+        setPageLoading(false);
+      }
+    };
+
+    loadUserResume();
   }, []);
 
-  const handleChange = (e) => {
+  const handleChange = async (e) => {
     const { name, value, files } = e.target;
 
     if (files && files[0]) {
       const file = files[0];
       const reader = new FileReader();
       
-      reader.onloadend = () => {
-        const resumeObj = { name: file.name, data: reader.result };
-        
-        // Save to persistent storage so it stays for the next job
-        localStorage.setItem(PERSISTED_RESUME_KEY, JSON.stringify(resumeObj));
+      reader.onloadend = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const resumeObj = { name: file.name, data: reader.result };
+          // Save using a key unique to this user
+          localStorage.setItem(`resume_${user.id}`, JSON.stringify(resumeObj));
 
-        setFormData({
-          ...formData,
-          resumeName: file.name,
-          resumeData: reader.result, 
-        });
+          setFormData({
+            ...formData,
+            resumeName: file.name,
+            resumeData: reader.result, 
+          });
+        }
       };
       reader.readAsDataURL(file);
     } else {
@@ -81,22 +102,46 @@ const JobForm = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  // --- UPDATED SUBMIT LOGIC ---
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const existingJobs = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    try {
+      // 1. Get current user
+      const { data: { user } } = await supabase.auth.getUser();
 
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify([...existingJobs, formData])
-      );
+      if (!user) {
+        toast.error("Please login to save applications");
+        setIsSubmitting(false);
+        return;
+      }
 
+      // 2. Insert into Supabase
+      const { error } = await supabase
+  .from("job_applications")
+  .insert([
+    {
+      user_id: user.id,
+      company: formData.company,
+      platform: formData.platform,
+      role: formData.role,
+      location: formData.location,
+      salary: formData.salary,
+      bond: formData.bond,
+      status: formData.status,
+      applieddate: formData.appliedDate, // Matches your screenshot's lowercase 'applieddate'
+      resume_name: formData.resumeName,
+      resume_data: formData.resumeData,
+    },
+  ]);
+
+      if (error) throw error;
+
+      // --- SUCCESS ACTIONS (Kept identical to your code) ---
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 5000);
 
-      // Reset form but KEEP the resume data
       setFormData({
         company: "",
         platform: "",
@@ -106,24 +151,21 @@ const JobForm = () => {
         bond: "",
         status: "",
         appliedDate: today,
-        resumeName: formData.resumeName, // Persistent
-        resumeData: formData.resumeData, // Persistent
+        resumeName: formData.resumeName, 
+        resumeData: formData.resumeData, 
       });
 
-      setIsSubmitting(false);
-      
-      toast.success("Job Application Added Successfully", {
-        style: {
-          borderRadius: "10px",
-          background: "#333",
-          color: "#fff",
-        },
-        iconTheme: {
-          primary: "#00d28a",
-          secondary: "#fff",
-        },
+      toast.success("Job Application Saved✨", {
+        style: { borderRadius: "10px", background: "#333", color: "#fff" },
+        iconTheme: { primary: "#00d28a", secondary: "#fff" },
       });
-    }, 1200);
+
+    } catch (error) {
+      console.error(error);
+      toast.error(error.message || "Failed to save application");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (pageLoading) {
@@ -186,7 +228,7 @@ const JobForm = () => {
                     <p className="opacity-75 small">Fill in the details once, track your progress forever.</p>
                     <hr className="my-4 opacity-25" />
                     <div className="d-flex align-items-center justify-content-center gap-2 mb-2">
-                        <span className="badge rounded-pill bg-success">Auto-save Resume</span>
+                        <span className="badge rounded-pill bg-success">Resume Auto-Saved</span>
                     </div>
                   </div>
                 </Col>
@@ -259,9 +301,16 @@ const JobForm = () => {
                             <option>Technical Lead</option>
                             <option>Cloud Engineer</option>
                             <option>Data Engineer</option>
+                            <option>Testing</option>
+                            <option>Business Analyst</option>
+                            <option>IT Consultant</option>
+                            <option>Network Engineer</option>
+                            <option>Database Administrator</option>
                             <option>Java Developer </option>
                             <option>Data Analyst</option>
                             <option>Full Stack Developer</option>
+                            <option>Cybersecurity Analyst</option>
+                            <option>Systems Administrator</option>
                             <option>Data Scientist</option>
                             <option>AI Engineer</option>
                             <option>Product Manager</option>
@@ -292,6 +341,14 @@ const JobForm = () => {
                             <option>PAN India</option>
                             <option>Bangalore</option>
                             <option>Hyderabad</option>
+                            <option>Pune</option>
+                            <option>Mumbai</option>
+                            <option>Chennai</option> 
+                            <option>Vizag</option>
+                            <option>Delhi</option>
+                            <option>Gurgaon</option>
+                            <option>Noida</option>
+                            <option>Kolkata</option>
                             <option>Other</option>
                           </Form.Select>
                         </Col>

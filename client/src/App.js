@@ -15,6 +15,7 @@ import Resources from "./pages/Resources";
 import RecentJobs from "./pages/RecentJobs";    
 import NetworkNode from "./pages/NetworkNode"; 
 import AuthPage from "./pages/AuthPage";
+import InterviewExperience from "./pages/InterviewExperience";
 
 // --- PROTECTED ROUTE COMPONENT ---
 // Blocks access to Dashboard/Jobs if NOT logged in
@@ -100,6 +101,7 @@ function App() {
           <Route path="/notes" element={<ProtectedRoute session={session}><Notes /></ProtectedRoute>} />
           <Route path="/resources" element={<ProtectedRoute session={session}><Resources /></ProtectedRoute>} />
           <Route path="/recent-jobs" element={<ProtectedRoute session={session}><RecentJobs /></ProtectedRoute>} />
+          <Route path="/interview-experience" element={<ProtectedRoute session={session}><InterviewExperience /></ProtectedRoute>} />
           <Route path="/connect" element={<ProtectedRoute session={session}><NetworkNode /></ProtectedRoute>} /> 
 
           {/* Catch-all: Redirects any typos or unknown URLs to Dashboard */}

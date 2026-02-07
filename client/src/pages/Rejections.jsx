@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Container, Row, Col, Card, Badge, Form, InputGroup, Pagination, Placeholder, Button } from "react-bootstrap";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, XCircle, Coffee, Zap, BarChart2, Save, Calendar, ArrowRight, AlertCircle, Target } from "react-feather";
+import { Search, XCircle, Coffee, Zap, BarChart2, Save, Calendar, ArrowRight, AlertCircle, Target, User, Heart } from "react-feather";
 import toast, { Toaster } from "react-hot-toast";
+import { supabase } from "../supabaseClient"; 
 
 const STORAGE_KEY = "job_applications";
 
@@ -11,6 +12,7 @@ const Rejections = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [userName, setUserName] = useState("Seeker");
   const itemsPerPage = 3;
 
   const quotes = [
@@ -25,7 +27,7 @@ const Rejections = () => {
     { text: "Hardships often prepare ordinary people for an extraordinary destiny.", author: "C.S. Lewis" },
     { text: "Don't be embarrassed by your failures, learn from them and start again.", author: "Richard Branson" },
     { text: "Rejection is an opportunity for your selection to be better.", author: "Bernard Kelvin Clive" },
-    { text: "The only limit to our realization of tomorrow will be our doubts of today.", author: "Franklin D. Roosevelt" },
+    { text: "The only limit to our realization of tomorrow will be our doubts of today.", author: "Franklin d. Roosevelt" },
     { text: "It does not matter how slowly you go as long as you do not stop.", author: "Confucius" },
     { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
     { text: "Persistence guarantees that results are inevitable.", author: "Paramahansa Yogananda" },
@@ -35,24 +37,44 @@ const Rejections = () => {
     { text: "A river cuts through rock, not because of its power, but because of its persistence.", author: "James N. Watkins" },
     { text: "You are not your setbacks; you are the person who survives them.", author: "Unknown" }
   ];
+  
   const activeQuote = useMemo(() => quotes[Math.floor(Math.random() * quotes.length)], []);
 
-  useEffect(() => {
-    const loadData = () => {
-      const allJobs = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-      const filtered = allJobs
-        .filter(job => job.status?.toLowerCase() === "rejected")
-        .sort((a, b) => new Date(a.appliedDate).getTime() - new Date(b.appliedDate).getTime()) 
-        .map((job, index) => ({
-          ...job,
-          uniqueId: job.id || `${job.company}-${job.appliedDate}-${index}`, 
-          rejectRound: job.rejectRound || "Technical Round",
-          mistakes: job.mistakes || ""
-        }));
-      setAllRejected(filtered);
+  const fetchPersonalData = async () => {
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        setUserName(user.user_metadata?.full_name || user.email.split('@')[0]);
+        const { data, error } = await supabase
+          .from(STORAGE_KEY)
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("status", "Rejected");
+
+        if (error) throw error;
+
+        const formatted = (data || [])
+          .sort((a, b) => new Date(a.appliedDate).getTime() - new Date(b.appliedDate).getTime())
+          .map((job, index) => ({
+            ...job,
+            uniqueId: job.id,
+            rejectRound: job.rejectRound || "Technical Round",
+            mistakes: job.mistakes || ""
+          }));
+        setAllRejected(formatted);
+      }
+    } catch (error) {
+      console.error("Error loading personal rejections:", error.message);
+      toast.error("Failed to sync your personal data");
+    } finally {
       setTimeout(() => setLoading(false), 800);
-    };
-    loadData();
+    }
+  };
+
+  useEffect(() => {
+    fetchPersonalData();
   }, []);
 
   const getAttemptCount = (company, date) => {
@@ -84,21 +106,26 @@ const Rejections = () => {
     ));
   };
 
-  const handleSave = (uniqueId) => {
+  const handleSave = async (uniqueId) => {
     const jobToSync = allRejected.find(j => j.uniqueId === uniqueId);
-    const fullStorage = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
     
-    const newFullStorage = fullStorage.map((j, index) => {
-      const currentEntryId = j.id || `${j.company}-${j.appliedDate}-${index}`;
-      return (currentEntryId === uniqueId) 
-        ? { ...j, mistakes: jobToSync.mistakes, rejectRound: jobToSync.rejectRound } 
-        : j;
-    });
+    try {
+        const { error } = await supabase
+            .from(STORAGE_KEY)
+            .update({ 
+                mistakes: jobToSync.mistakes, 
+                rejectRound: jobToSync.rejectRound 
+            })
+            .eq('id', uniqueId);
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newFullStorage));
-    toast.success(`Analysis Saved!`, {
-      style: { borderRadius: '12px', background: '#11102e', color: '#fff' }
-    });
+        if (error) throw error;
+
+        toast.success(`Analysis Saved!`, {
+            style: { borderRadius: '12px', background: '#11102e', color: '#fff' }
+        });
+    } catch (error) {
+        toast.error("Couldn't update analysis");
+    }
   };
 
   return (
@@ -107,7 +134,7 @@ const Rejections = () => {
       
       <Row className="mb-4 align-items-center">
         <Col lg={7}>
-          <h2 className="fw-bold mb-0" style={{ color: "#11102ed9" }}>Analyze Your Rejections</h2>
+          <h2 className="fw-bold mb-0" style={{ color: "#11102ed9" }}>Analyze Your Rejections here</h2>
           <p className="text-muted">Tracking your progress from the beginning.</p>
         </Col>
         <Col lg={5}>
@@ -237,10 +264,9 @@ const Rejections = () => {
                                 value={job.mistakes}
                                 onChange={(e) => handleChange(job.uniqueId, 'mistakes', e.target.value)}
                               />
-                              {/* Save Analysis button is now always visible */}
                               <Button 
                                 size="sm" className="position-absolute border-0"
-                                style={{ bottom: "10px", right: "15px", borderRadius: "10px", backgroundColor: "#0c5c84" }}
+                                style={{ bottom: "10px", right: "15px", borderRadius: "10px", backgroundColor: "#367d91" }}
                                 onClick={() => handleSave(job.uniqueId)}
                               >
                                 <Save size={14} className="me-2" /> Save

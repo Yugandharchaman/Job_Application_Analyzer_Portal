@@ -2,12 +2,13 @@ import React, { useState, useEffect } from "react";
 import { Container, Row, Col, Card, Button, Form, InputGroup, Badge, Spinner } from "react-bootstrap";
 import { Book, ExternalLink, Bookmark, Plus, Trash2, Award, Search, Youtube, Info, Terminal, Code, FileText } from "react-feather";
 import toast, { Toaster } from "react-hot-toast";
+import { supabase } from "../supabaseClient"; // Ensure this path is correct
 
 const Resources = () => {
   const [myLinks, setMyLinks] = useState([]);
   const [newLink, setNewLink] = useState({ title: "", url: "" });
   const [searchTerm, setSearchTerm] = useState(""); 
-  const [isLoading, setIsLoading] = useState(true); // Added Loading State
+  const [isLoading, setIsLoading] = useState(true);
 
   const platforms = [
     {
@@ -33,38 +34,73 @@ const Resources = () => {
     }
   ];
 
+  // FETCH DATA FROM SUPABASE
   useEffect(() => {
-    // Simulate a brief delay for a smoother "premium" feel
-    const timer = setTimeout(() => {
-      const saved = JSON.parse(localStorage.getItem("user_resources")) || [];
-      setMyLinks(saved);
+    const fetchResources = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        const { data, error } = await supabase
+          .from("resources")
+          .select("*")
+          .eq("user_id", user.id) // Personal-based filtering
+          .order("created_at", { ascending: false });
+
+        if (!error) setMyLinks(data || []);
+      }
       setIsLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
+    };
+
+    fetchResources();
   }, []);
 
-  const handleAddLink = (e) => {
+  // ADD TO SUPABASE
+  const handleAddLink = async (e) => {
     e.preventDefault();
     if (!newLink.title || !newLink.url) return toast.error("Please fill all fields");
-    const updated = [...myLinks, { ...newLink, id: Date.now() }];
-    setMyLinks(updated);
-    localStorage.setItem("user_resources", JSON.stringify(updated));
-    setNewLink({ title: "", url: "" });
-    toast.success("Bookmark saved!");
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return toast.error("Please login to save resources");
+
+    const { data, error } = await supabase
+      .from("resources")
+      .insert([
+        { 
+          title: newLink.title, 
+          url: newLink.url, 
+          user_id: user.id 
+        }
+      ])
+      .select();
+
+    if (error) {
+      toast.error("Failed to save");
+    } else {
+      setMyLinks([data[0], ...myLinks]);
+      setNewLink({ title: "", url: "" });
+      toast.success("Bookmark saved!");
+    }
   };
 
-  const deleteLink = (id) => {
-    const updated = myLinks.filter(link => link.id !== id);
-    setMyLinks(updated);
-    localStorage.setItem("user_resources", JSON.stringify(updated));
-    toast.success("Removed");
+  // DELETE FROM SUPABASE
+  const deleteLink = async (id) => {
+    const { error } = await supabase
+      .from("resources")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      toast.error("Could not delete");
+    } else {
+      setMyLinks(myLinks.filter(link => link.id !== id));
+      toast.success("Removed");
+    }
   };
 
   const filteredLinks = myLinks.filter(link => 
     link.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Loading Screen Component
   if (isLoading) {
     return (
       <div className="d-flex flex-column align-items-center justify-content-center" style={{ height: "100vh", background: "#f8faff" }}>
@@ -91,14 +127,22 @@ const Resources = () => {
     <Container fluid className="py-4 px-lg-5 animate-in" style={{ background: "#f8faff", minHeight: "100vh", position: 'relative' }}>
       <Toaster position="bottom-right" />
       
-      {/* ACTION TOOLS: Compilers & Resume Checker */}
       <div className="d-none d-md-flex gap-2 position-absolute top-0 end-0 mt-4 me-lg-5">
         <Button 
           href="https://nodeflair.com/resume-checker" 
           target="_blank"
           variant="white"
           className="shadow-sm border-0 rounded-pill px-3 py-2 d-flex align-items-center gap-2 compiler-btn"
-          style={{ fontSize: '13px', fontWeight: '700', color: '#ff4757', border: '1px solid #ff475722' }}
+          style={{ fontSize: '13px', fontWeight: '700', color: '#412e89', border: '1px solid #ff475722' }}
+        >
+          <FileText size={16} /> Check Resume Score
+        </Button>
+        <Button 
+          href="https://www.mployee.me/" 
+          target="_blank"
+          variant="white"
+          className="shadow-sm border-0 rounded-pill px-3 py-2 d-flex align-items-center gap-2 compiler-btn"
+          style={{ fontSize: '13px', fontWeight: '700', color: '#e5304b', border: '1px solid #ff475722' }}
         >
           <FileText size={16} /> Check Resume Score
         </Button>
@@ -122,17 +166,14 @@ const Resources = () => {
         </Button>
       </div>
 
-      {/* Header */}
       <div className="mb-5">
         <h2 className="fw-bold d-flex align-items-center gap-3" style={{ color: "#11102e" }}>
-          <div></div>
           Coding Hub
         </h2>
         <p className="text-muted ms-3">Direct access to the world's best practice platforms.</p>
       </div>
 
       <Row className="g-4">
-        {/* Main Platforms Section */}
         <Col lg={8}>
           <Row className="g-4">
             {platforms.map((p, idx) => (
@@ -164,7 +205,6 @@ const Resources = () => {
           </Row>
         </Col>
 
-        {/* Sidebar Bookmarks */}
         <Col lg={4}>
           <Card className="border-0 shadow-sm p-4 sticky-top" style={{ borderRadius: "24px", top: "20px" }}>
             <h5 className="fw-bold mb-4 d-flex align-items-center gap-2 text-dark">
@@ -246,74 +286,21 @@ const Resources = () => {
 
       <style>
         {`
-          .animate-in {
-            animation: fadeIn 0.6s ease-out;
-          }
-          @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          .compiler-btn {
-            background: white !important;
-            transition: all 0.2s ease;
-          }
-          .compiler-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
-          }
-          .platform-card {
-            transition: all 0.3s ease;
-            border-left: 0px solid transparent !important;
-          }
-          .platform-card:hover {
-            transform: translateY(-5px);
-            border-left: 8px solid #11102e !important;
-            box-shadow: 0 15px 30px rgba(0,0,0,0.08) !important;
-          }
-          .platform-icon {
-            width: 70px;
-            height: 70px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 18px;
-            flex-shrink: 0;
-            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
-          }
-          .custom-input {
-            border-radius: 10px !important;
-            border: 1px solid #e2e8f0;
-            padding: 10px 14px;
-            font-size: 14px;
-            background-color: #fff;
-          }
-          .custom-input:focus {
-            border-color: #11102e;
-            background-color: #fff;
-          }
-          .link-item {
-            transition: background 0.2s;
-          }
-          .link-item:hover {
-            background-color: #f8f9ff !important;
-          }
-          .hover-danger:hover {
-            opacity: 1 !important;
-            background-color: #fff5f5;
-            border-radius: 6px;
-          }
-          .link-scroll {
-            max-height: 380px;
-            overflow-y: auto;
-            padding-right: 5px;
-          }
-          .link-scroll::-webkit-scrollbar {
-            width: 4px;
-          }
-          .link-scroll::-webkit-scrollbar-thumb {
-            background: #e0e0e0;
-            border-radius: 10px;
-          }
+          .animate-in { animation: fadeIn 0.6s ease-out; }
+          @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+          .compiler-btn { background: white !important; transition: all 0.2s ease; }
+          .compiler-btn:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; }
+          .platform-card { transition: all 0.3s ease; border-left: 0px solid transparent !important; }
+          .platform-card:hover { transform: translateY(-5px); border-left: 8px solid #11102e !important; box-shadow: 0 15px 30px rgba(0,0,0,0.08) !important; }
+          .platform-icon { width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; border-radius: 18px; flex-shrink: 0; box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
+          .custom-input { border-radius: 10px !important; border: 1px solid #e2e8f0; padding: 10px 14px; font-size: 14px; background-color: #fff; }
+          .custom-input:focus { border-color: #11102e; background-color: #fff; }
+          .link-item { transition: background 0.2s; }
+          .link-item:hover { background-color: #f8f9ff !important; }
+          .hover-danger:hover { opacity: 1 !important; background-color: #fff5f5; border-radius: 6px; }
+          .link-scroll { max-height: 380px; overflow-y: auto; padding-right: 5px; }
+          .link-scroll::-webkit-scrollbar { width: 4px; }
+          .link-scroll::-webkit-scrollbar-thumb { background: #e0e0e0; border-radius: 10px; }
         `}
       </style>
     </Container>

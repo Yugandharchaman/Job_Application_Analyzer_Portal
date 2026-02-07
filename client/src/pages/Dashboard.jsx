@@ -7,8 +7,9 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { supabase } from "../supabaseClient"; 
 
-const STORAGE_KEY = "job_applications";
+const STORAGE_KEY = "job_applications"; 
 
 const COLORS = {
   total: "#14021c",
@@ -21,30 +22,36 @@ const COLORS = {
 
 const MOTIVATIONAL_QUOTES = [
   "Success is not final, failure is not fatal: it is the courage to continue that counts. – Winston Churchill",
-  "Your dream job is just one application away. Keep going!",
-  "Don't stop until you're proud. Every 'No' is a step closer to a 'Yes'.",
-  "Our greatest weakness lies in giving up. The most certain way to succeed is always to try just one more time.",
-  "Hardships often prepare ordinary people for an extraordinary destiny. – C.S. Lewis",
   "Opportunities don't happen, you create them. – Chris Grosser",
   "The only way to do great work is to love what you do. – Steve Jobs",
-  "Focus on progress, not perfection.",
-  "Action is the foundational key to all success. – Pablo Picasso",
   "Don't watch the clock; do what it does. Keep going. – Sam Levenson",
-  "Believe you can and you're halfway there. – Theodore Roosevelt",
-  "Confidence comes from hours and days and weeks and years of constant work and dedication. – Roger Staubach",
   "The future depends on what you do today. – Mahatma Gandhi",
+  "Hard work beats talent when talent doesn't work hard. – Tim Notke",
+  "I am not a product of my circumstances. I am a product of my decisions. – Stephen Covey",
   "Your talent determines what you can do. Your motivation determines how much you are willing to do.",
-  "Work until your idols become your rivals.",
-  "Don't be afraid to give up the good to go for the great. – John D. Rockefeller",
-  "The expert in anything was once a beginner.",
-  "Luck is what happens when preparation meets opportunity. – Seneca",
-  "Dream big. Start small. But most of all, start.",
-  "Quality is not an act, it is a habit. – Aristotle",
-  "Consistency is the playground of excellence.",
-  "Great things never come from comfort zones.",
-  "Be so good they can't ignore you. – Steve Martin",
+  "Precision is the soul of professional excellence.",
+  "Consistency is what transforms average into excellence.",
+  "Standardize your excellence until it becomes your habit.",
+  "Your professional reputation is the shadow cast by your work ethic.",
+  "Every expert was once a beginner. Keep applying, keep growing.",
+  "Focus on being productive instead of busy. – Tim Ferriss",
+  "Efficiency is doing things right; effectiveness is doing the right things. – Peter Drucker",
+  "The secret of getting ahead is getting started. – Mark Twain",
   "The only limit to our realization of tomorrow will be our doubts of today. – Franklin D. Roosevelt",
-  "Everything you’ve ever wanted is on the other side of fear. – George Addair"
+  "Don't be afraid to give up the good to go for the great. – John D. Rockefeller",
+  "Believe you can and you're halfway there. – Theodore Roosevelt",
+  "Quality is not an act, it is a habit. – Aristotle",
+  "It does not matter how slowly you go as long as you do not stop. – Confucius",
+  "Success usually comes to those who are too busy to be looking for it. – Henry David Thoreau",
+  "The way to get started is to quit talking and begin doing. – Walt Disney",
+  "Dream big and dare to fail. – Norman Vaughan",
+  "Action is the foundational key to all success. – Pablo Picasso",
+  "The difference between a successful person and others is not a lack of strength, but a lack of will.",
+  "The goal is not to be better than the other man, but your previous self. – Dalai Lama",
+  "Small daily improvements over time lead to stunning results. – Robin Sharma",
+  "Your career is a marathon, not a sprint. Pace your progress.",
+  "Professionalism is knowing how to do it, when to do it, and doing it. – Frank Tyger",
+  "Excellence is the gradual result of always striving to do better. – Pat Riley"
 ];
 
 const Dashboard = () => {
@@ -53,6 +60,27 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState("");
   const [greeting, setGreeting] = useState("");
+
+  const fetchPersonalData = async () => {
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        const { data, error } = await supabase
+          .from(STORAGE_KEY)
+          .select("*")
+          .eq("user_id", user.id); 
+
+        if (error) throw error;
+        setJobs(data || []);
+      }
+    } catch (error) {
+      console.error("Error loading dashboard:", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -63,13 +91,7 @@ const Dashboard = () => {
     const randomQuote = MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)];
     setQuote(randomQuote);
 
-    const timer = setTimeout(() => {
-      const storedJobs = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-      setJobs(storedJobs);
-      setLoading(false);
-    }, 1200); 
-
-    return () => clearTimeout(timer);
+    fetchPersonalData();
   }, []);
 
   const counts = {
@@ -81,12 +103,6 @@ const Dashboard = () => {
     rejected: jobs.filter(j => j.status === "Rejected").length,
   };
 
-  const interviewRate = counts.total > 0 
-    ? (((counts.screening + counts.tr + counts.hr) / counts.total) * 100).toFixed(1) 
-    : 0;
-
-  const getProgression = (val) => (counts.total > 0 ? ((val / counts.total) * 100).toFixed(0) : 0);
-
   const pieData = [
     { name: "Screening", value: counts.screening, color: COLORS.screening },
     { name: "TR Round", value: counts.tr, color: COLORS.tr },
@@ -94,6 +110,12 @@ const Dashboard = () => {
     { name: "Offers", value: counts.offer, color: COLORS.offer },
     { name: "Rejected", value: counts.rejected, color: COLORS.rejected },
   ].filter(item => item.value > 0);
+
+  const interviewRate = counts.total > 0 
+    ? (((counts.screening + counts.tr + counts.hr) / counts.total) * 100).toFixed(1) 
+    : 0;
+
+  const getProgression = (val) => (counts.total > 0 ? ((val / counts.total) * 100).toFixed(0) : 0);
 
   const summaryCards = [
     { title: "Applications", value: counts.total, color: COLORS.total, icon: "📋" },
@@ -116,7 +138,6 @@ const Dashboard = () => {
   return (
     <div className="dashboard-wrapper" style={{ padding: "30px", background: "#fdfdff", minHeight: "100vh" }}>
       
-      {/* HEADER SECTION */}
       <div className="d-md-flex justify-content-between align-items-center mb-4">
         <div className="animate-slide-in">
           <h2 className="fw-bold mb-1" style={{ color: COLORS.total }}>{greeting} 👋</h2>
@@ -132,7 +153,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* INSIGHT BANNER */}
       <div className="mb-4 p-3 d-flex align-items-center justify-content-between shadow-sm main-banner animate-fade-in">
         <div className="d-flex align-items-center gap-3">
           <div className="banner-icon">🔥</div>
@@ -144,7 +164,6 @@ const Dashboard = () => {
         <h3 className="fw-bold mb-0 me-md-4">{interviewRate}%</h3>
       </div>
 
-      {/* SUMMARY CARDS - ALIGNED CENTER */}
       <Row className="g-3 mb-5">
         {summaryCards.map((item, index) => (
           <Col key={index} xs={6} sm={4} md={4} lg={2} className="animate-pop" style={{ animationDelay: `${index * 0.1}s` }}>
@@ -164,14 +183,13 @@ const Dashboard = () => {
       </Row>
 
       <Row className="g-4">
-        {/* PIE CHART */}
         <Col xs={12} lg={7}>
-          <Card className="shadow-lg border-0 h-100" style={{ borderRadius: "25px", background: "#fff" }}>
+          <Card className="shadow-lg border-0 h-100 animate-fade-in" style={{ borderRadius: "25px", background: "#fff" }}>
             <Card.Body className="text-center p-4">
               <h6 className="mb-4 fw-bold text-dark">Job Application Status Distribution</h6>
               {pieData.length === 0 ? (
                 <div className="text-center py-5">
-                   <p className="text-muted mt-4">No job applications added yet</p>
+                   <p className="text-muted mt-4">No specific interview rounds reached yet</p>
                 </div>
               ) : (
                 <>
@@ -203,7 +221,7 @@ const Dashboard = () => {
                             />
                           ))}
                         </Pie>
-                        <text x="50%" y="48%" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: "24px", fontWeight: "800", fontFamily: 'Plus Jakarta Sans' }}>
+                        <text x="50%" y="48%" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: "24px", fontWeight: "800" }}>
                           {counts.total}
                         </text>
                         <text x="50%" y="55%" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: "7px", fill: "#6c757d", fontWeight: "700", letterSpacing: '1px' }}>
@@ -216,7 +234,7 @@ const Dashboard = () => {
 
                   <div className="d-flex justify-content-center flex-wrap gap-3 mt-3">
                     {pieData.map((item, index) => (
-                      <div key={index} className="d-flex align-items-center gap-2 px-2 py-1 rounded-pill bg-light" style={{ fontSize: "12px", fontWeight: 600 }}>
+                      <div key={index} className="d-flex align-items-center gap-2 px-2 py-1 rounded-pill bg-light animate-pop" style={{ fontSize: "12px", fontWeight: 600, animationDelay: `${index * 0.05}s` }}>
                         <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: item.color }} />
                         {item.name}: {item.value}
                       </div>
@@ -228,9 +246,8 @@ const Dashboard = () => {
           </Card>
         </Col>
 
-        {/* JOURNEY MILESTONES */}
         <Col xs={12} lg={5}>
-            <Card className="border-0 shadow-lg h-100" style={{ borderRadius: "25px", background: "#fff" }}>
+            <Card className="border-0 shadow-lg h-100 animate-fade-in" style={{ borderRadius: "25px", background: "#fff" }}>
                 <Card.Body className="p-4">
                     <div className="mb-4">
                         <h5 className="fw-bold mb-0">Journey Milestones</h5>
@@ -243,8 +260,8 @@ const Dashboard = () => {
                           { label: "Finalist", reached: counts.hr > 0, val: counts.hr, desc: "HR & Culture rounds", color: COLORS.hr },
                           { label: "Selected", reached: counts.offer > 0, val: counts.offer, desc: "Job offers secured", color: COLORS.offer },
                         ].map((m, i) => (
-                          <div key={i} className={`milestone-item d-flex gap-3 mb-4 animate-slide-right ${m.reached ? 'active' : 'pending'}`} style={{ animationDelay: `${i * 0.15}s` }}>
-                            <div className="milestone-line-box">
+                          <div key={i} className={`milestone-item d-flex gap-3 mb-4 animate-slide-right ${m.reached ? 'active' : 'pending'}`} style={{ animationDelay: `${i * 0.15}s`, position: 'relative' }}>
+                            <div className="milestone-line-box" style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                               <div className="milestone-circle">{m.reached ? "✓" : i + 1}</div>
                               {i < 3 && <div className="line-connector"></div>}
                             </div>
@@ -255,22 +272,22 @@ const Dashboard = () => {
                               </div>
                               <small className="text-muted d-block">{m.desc}</small>
                               <div className="progress mt-2" style={{ height: "4px", borderRadius: "10px", background: "#f0f0f0" }}>
-                                <div className="progress-bar" style={{ width: `${getProgression(m.val)}%`, background: m.color, borderRadius: "10px" }}></div>
+                                <div className="progress-bar" style={{ width: `${getProgression(m.val)}%`, background: m.color, borderRadius: "10px", transition: 'width 1.5s ease-in-out' }}></div>
                               </div>
                             </div>
                           </div>
                         ))}
                     </div>
 
-                    <div className="mt-4 p-3 rounded-4" style={{ background: "linear-gradient(135deg, #f8f9ff 0%, #eef2ff 100%)", border: "1px solid #e0e7ff" }}>
+                    <div className="mt-4 p-3 rounded-4 animate-pop" style={{ background: "linear-gradient(135deg, #f8f9ff 0%, #eef2ff 100%)", border: "1px solid #e0e7ff", animationDelay: "0.6s" }}>
                         <div className="d-flex justify-content-between mb-2">
                            <h6 className="fw-bold mb-0" style={{ fontSize: "0.85rem" }}>Interview Readiness</h6>
                            <span className="text-primary fw-bold" style={{ fontSize: "0.85rem" }}>{interviewRate > 40 ? 'High' : 'Improving'}</span>
                         </div>
                         <p className="text-muted" style={{ fontSize: "0.75rem", lineHeight: "1.4" }}>
                            {counts.tr > 0 
-                             ? "You have technical rounds scheduled. We recommend practicing Leetcode Mediums." 
-                             : "Focus on networking and refining your resume to unlock the 'Interviewee' milestone."}
+                             ? "You have technical rounds scheduled. Focus on Leetcode Mediums." 
+                             : "Focus on networking to unlock the 'Interviewee' milestone."}
                         </p>
                     </div>
                 </Card.Body>
@@ -281,89 +298,62 @@ const Dashboard = () => {
       <style>
         {`
           @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-          
           .dashboard-wrapper { font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; }
           .fw-black { font-weight: 800; }
           
-          .inspiration-card {
-            max-width: 420px;
-            border-radius: 20px;
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(226, 232, 240, 0.8);
-            border-left: 6px solid navy;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-          }
-          .inspiration-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 20px 30px rgba(11, 3, 15, 0.27) !important;
-            background: #e5eae7;
-          }
-
-          .pulse-dot {
-            width: 8px; height: 8px;
-            background: #281dcc;
-            border-radius: 50%;
-            display: inline-block;
-            animation: dot-pulse 1.5s infinite;
-          }
-
-          @keyframes dot-pulse {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(40, 29, 204, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(40, 29, 204, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(40, 29, 204, 0); }
-          }
-
-          .milestone-item { transition: 0.3s ease; }
-          .milestone-item.pending { opacity: 0.4; filter: grayscale(1); }
-          
-          .milestone-line-box {
-            display: flex; flex-direction: column; align-items: center; position: relative;
-          }
-          .milestone-circle {
-            width: 32px; height: 32px;
-            border-radius: 50%;
-            background: #f1f5f9;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 0.85rem; font-weight: 800;
-            z-index: 2;
-            border: 2px solid #fff;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-          }
-          .active .milestone-circle { background: ${COLORS.offer}; color: white; box-shadow: 0 4px 12px ${COLORS.offer}55; }
-          
-          .line-connector {
-            width: 2px; height: 100%;
-            background: #e2e8f0;
-            position: absolute; top: 32px; z-index: 1;
-          }
-          .active .line-connector { background: ${COLORS.offer}; }
-
-          .animate-fade-in { animation: fadeIn 1s ease-out; }
-          .animate-slide-in { animation: slideInLeft 0.8s ease-out; }
-          .animate-pop { animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
-          .animate-slide-right { animation: slideInRight 0.6s ease-out both; }
-
+          /* ANIMATION DEFINITIONS */
           @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
           @keyframes slideInLeft { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
           @keyframes slideInRight { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
-          @keyframes popIn { 
-            from { opacity: 0; transform: scale(0.8); } 
-            to { opacity: 1; transform: scale(1); } 
+          @keyframes popIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+          @keyframes dot-pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(40, 29, 204, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(40, 29, 204, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(40, 29, 204, 0); } }
+          @keyframes pulseText { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+
+          /* UTILITY CLASSES */
+          .animate-fade-in { animation: fadeIn 1s ease-out both; }
+          .animate-slide-in { animation: slideInLeft 0.8s ease-out both; }
+          .animate-slide-right { animation: slideInRight 0.6s ease-out both; }
+          .animate-pop { animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+          .animate-pulse { animation: pulseText 2s infinite ease-in-out; }
+
+          .inspiration-card { 
+            border-left: 6px solid navy; 
+            border-radius: 20px; 
+            background: rgba(255, 255, 255, 0.8); 
+            transition: all 0.3s ease;
           }
+          .inspiration-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
           
-          .main-banner {
-            background: linear-gradient(135deg, #14021c 0%, #3b075e 100%);
-            border-radius: 20px;
-            color: white;
+          .pulse-dot { width: 8px; height: 8px; background: #281dcc; border-radius: 50%; display: inline-block; animation: dot-pulse 1.5s infinite; }
+          
+          .milestone-item.pending { opacity: 0.4; filter: grayscale(1); }
+          .milestone-circle { 
+             width: 32px; height: 32px; border-radius: 50%; background: #f1f5f9; 
+             display: flex; align-items: center; justify-content: center; z-index: 2; 
+             border: 2px solid #fff; transition: all 0.3s ease;
+          }
+          .active .milestone-circle { background: ${COLORS.offer}; color: white; box-shadow: 0 0 15px ${COLORS.offer}55; }
+          
+          .line-connector { 
+            width: 2px; 
+            height: 40px; 
+            background: #e2e8f0; 
+            position: absolute; 
+            top: 32px; 
+            left: 15px;
+            z-index: 1; 
+          }
+          .active .line-connector { background: ${COLORS.offer}; }
+          
+          .main-banner { 
+            background: linear-gradient(135deg, #14021c 0%, #3b075e 100%); 
+            border-radius: 20px; color: white; 
             transition: transform 0.3s ease;
           }
-          .main-banner:hover { transform: scale(1.005); }
+          .main-banner:hover { transform: scale(1.01); }
 
-          .dashboard-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 15px 30px rgba(0,0,0,0.08) !important;
-          }
+          .dashboard-card { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+          .dashboard-card:hover { transform: translateY(-8px); box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important; }
         `}
       </style>
     </div>
