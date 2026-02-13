@@ -16,6 +16,7 @@ import RecentJobs from "./pages/RecentJobs";
 import NetworkNode from "./pages/NetworkNode"; 
 import AuthPage from "./pages/AuthPage";
 import InterviewExperience from "./pages/InterviewExperience";
+import ResetPassword from "./pages/ResetPassword";
 
 // --- PROTECTED ROUTE COMPONENT ---
 // Blocks access to Dashboard/Jobs if NOT logged in
@@ -90,6 +91,9 @@ function App() {
               </PublicRoute>
             } 
           />
+
+          {/* MODIFIED: Reset Password Route - PUBLIC (no auth required) */}
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Protected Routes: If NOT logged in, sends user to /auth */}
           <Route path="/" element={<ProtectedRoute session={session}><Dashboard /></ProtectedRoute>} />

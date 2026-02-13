@@ -1,4 +1,4 @@
-import { Card, Row, Col, Spinner} from "react-bootstrap"; 
+import { Card, Row, Col, Spinner } from "react-bootstrap";
 import { useEffect, useState } from "react";
 import {
   PieChart,
@@ -7,9 +7,10 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { supabase } from "../supabaseClient"; 
+import { supabase } from "../supabaseClient";
 
-const STORAGE_KEY = "job_applications"; 
+const STORAGE_KEY = "job_applications";
+const UPDATES_TABLE = "hiring_updates";
 
 const COLORS = {
   total: "#14021c",
@@ -56,25 +57,238 @@ const MOTIVATIONAL_QUOTES = [
 
 const Dashboard = () => {
   const [jobs, setJobs] = useState([]);
+  const [updates, setUpdates] = useState([]);
   const [activeIndex, setActiveIndex] = useState(null);
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState("");
   const [greeting, setGreeting] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdminMenu, setShowAdminMenu] = useState(false);
+  const [sessionUser, setSessionUser] = useState(null);
+  const [appliedJobsCount, setAppliedJobsCount] = useState(0);
+  const [appliedJobsWithStatus, setAppliedJobsWithStatus] = useState([]); // NEW: Track applied jobs with status
+
+  // Fetch initial updates
+  const fetchUpdates = async () => {
+    const { data, error } = await supabase
+      .from(UPDATES_TABLE)
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (!error) setUpdates(data);
+  };
+
+  // NEW: Fetch applied jobs with status from job_applications_status
+  const fetchAppliedJobsWithStatus = async (userId) => {
+    if (!userId) return;
+
+    const { data, error } = await supabase
+      .from('job_applications_status')
+      .select('id, status')
+      .eq('user_id', userId)
+      .eq('is_applied', true);
+
+    if (!error) {
+      setAppliedJobsWithStatus(data || []);
+      setAppliedJobsCount(data?.length || 0);
+    }
+  };
+
+  // REAL-TIME SUBSCRIPTION
+  useEffect(() => {
+    const channel = supabase
+      .channel("realtime-updates")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: UPDATES_TABLE },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            setUpdates((prev) => [payload.new, ...prev]);
+          } 
+          else if (payload.eventType === "UPDATE") {
+            setUpdates((prev) =>
+              prev.map((u) => (u.id === payload.new.id ? payload.new : u))
+            );
+          } 
+          else if (payload.eventType === "DELETE") {
+            setUpdates((prev) => prev.filter((u) => u.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // NEW: Real-time subscription for job_applications_status changes
+  useEffect(() => {
+    if (!sessionUser) return;
+
+    const applicationsChannel = supabase
+      .channel('job-applications-status-realtime')
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'job_applications_status',
+          filter: `user_id=eq.${sessionUser.id}`
+        },
+        (payload) => {
+          // Refetch applied jobs with status whenever there's a change
+          fetchAppliedJobsWithStatus(sessionUser.id);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(applicationsChannel);
+    };
+  }, [sessionUser]);
+
+  // NEW: Real-time subscription for job_applications changes
+  useEffect(() => {
+    if (!sessionUser) return;
+
+    const jobApplicationsChannel = supabase
+      .channel('job-applications-realtime')
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'job_applications',
+          filter: `user_id=eq.${sessionUser.id}`
+        },
+        async (payload) => {
+          // Refetch manual job applications whenever there's a change
+          const { data } = await supabase
+            .from(STORAGE_KEY)
+            .select("*")
+            .eq("user_id", sessionUser.id);
+          
+          setJobs(data || []);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(jobApplicationsChannel);
+    };
+  }, [sessionUser]);
+
+  // Post a real-time update (Admin Only)
+  const handlePostUpdate = async () => {
+    const text = prompt("Enter real-time hiring update (Speaker Marquee):");
+    if (!text || !sessionUser) return;
+
+    const { error } = await supabase
+      .from(UPDATES_TABLE)
+      .insert([{ content: text, is_new: true }]);
+
+    if (error) {
+      alert("Error posting update: " + error.message);
+    }
+    setShowAdminMenu(false);
+  };
+
+  // Edit an update (Admin Only)
+  const handleEditUpdate = async () => {
+    if (updates.length === 0) {
+      alert("No updates to edit.");
+      return;
+    }
+    
+    const updateList = updates.map((u, i) => `${i + 1}. ${u.content}`).join("\n");
+    const choice = prompt(`Select update number to edit:\n\n${updateList}`);
+    if (choice === null) return; 
+    
+    const index = parseInt(choice) - 1;
+    if (isNaN(index) || index < 0 || index >= updates.length) {
+      alert("Invalid selection.");
+      return;
+    }
+
+    const selectedUpdate = updates[index];
+    const newText = prompt("Edit hiring update:", selectedUpdate.content);
+    
+    if (newText === null || newText.trim() === "" || newText === selectedUpdate.content) {
+      setShowAdminMenu(false);
+      return;
+    }
+
+    const { error } = await supabase
+      .from(UPDATES_TABLE)
+      .update({ content: newText.trim() })
+      .eq("id", selectedUpdate.id);
+
+    if (error) {
+      alert("Edit failed: " + error.message);
+    } else {
+      setShowAdminMenu(false);
+    }
+  };
+
+  // Delete an update (Admin Only)
+  const handleDeleteUpdate = async (id, content) => {
+    if (!window.confirm(`Are you sure you want to delete this update?\n\n"${content}"`)) return;
+
+    const { error } = await supabase
+      .from(UPDATES_TABLE)
+      .delete()
+      .eq("id", id);
+    
+    if (error) {
+      alert("Delete failed: " + error.message);
+    }
+  };
+
+  // Delete via Menu Selection (Admin Only)
+  const handleDeleteFromMenu = async () => {
+    if (updates.length === 0) return;
+    
+    const updateList = updates.map((u, i) => `${i + 1}. ${u.content}`).join("\n");
+    const choice = prompt(`Select update number to DELETE:\n\n${updateList}`);
+    if (choice === null) return; 
+    
+    const index = parseInt(choice) - 1;
+    if (isNaN(index) || index < 0 || index >= updates.length) return;
+
+    const selectedUpdate = updates[index];
+    await handleDeleteUpdate(selectedUpdate.id, selectedUpdate.content);
+    setShowAdminMenu(false);
+  };
 
   const fetchPersonalData = async () => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+      setSessionUser(user);
+
       if (user) {
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("role") 
+          .eq("id", user.id)
+          .single();
+
+        if (!profileError && profileData) {
+          setIsAdmin(profileData.role === 'admin');
+        }
+
         const { data, error } = await supabase
           .from(STORAGE_KEY)
           .select("*")
-          .eq("user_id", user.id); 
+          .eq("user_id", user.id);
 
         if (error) throw error;
         setJobs(data || []);
+
+        // NEW: Fetch applied jobs with status
+        await fetchAppliedJobsWithStatus(user.id);
       }
+      fetchUpdates();
     } catch (error) {
       console.error("Error loading dashboard:", error.message);
     } finally {
@@ -94,13 +308,20 @@ const Dashboard = () => {
     fetchPersonalData();
   }, []);
 
+  // NEW: Calculate counts including platform jobs with status
+  const platformScreening = appliedJobsWithStatus.filter(j => j.status === "Selected Screening Round").length;
+  const platformTR = appliedJobsWithStatus.filter(j => j.status === "TR Round").length;
+  const platformHR = appliedJobsWithStatus.filter(j => j.status === "HR Round").length;
+  const platformOffer = appliedJobsWithStatus.filter(j => j.status === "Offer").length;
+  const platformRejected = appliedJobsWithStatus.filter(j => j.status === "Rejected").length;
+
   const counts = {
-    total: jobs.length,
-    screening: jobs.filter(j => j.status === "Selected Screening Round").length,
-    tr: jobs.filter(j => j.status === "TR Round").length,
-    hr: jobs.filter(j => j.status === "HR Round").length,
-    offer: jobs.filter(j => j.status === "Offer").length,
-    rejected: jobs.filter(j => j.status === "Rejected").length,
+    total: jobs.length + appliedJobsCount,
+    screening: jobs.filter(j => j.status === "Selected Screening Round").length + platformScreening,
+    tr: jobs.filter(j => j.status === "TR Round").length + platformTR,
+    hr: jobs.filter(j => j.status === "HR Round").length + platformHR,
+    offer: jobs.filter(j => j.status === "Offer").length + platformOffer,
+    rejected: jobs.filter(j => j.status === "Rejected").length + platformRejected,
   };
 
   const pieData = [
@@ -111,8 +332,8 @@ const Dashboard = () => {
     { name: "Rejected", value: counts.rejected, color: COLORS.rejected },
   ].filter(item => item.value > 0);
 
-  const interviewRate = counts.total > 0 
-    ? (((counts.screening + counts.tr + counts.hr) / counts.total) * 100).toFixed(1) 
+  const interviewRate = counts.total > 0
+    ? (((counts.screening + counts.tr + counts.hr) / counts.total) * 100).toFixed(1)
     : 0;
 
   const getProgression = (val) => (counts.total > 0 ? ((val / counts.total) * 100).toFixed(0) : 0);
@@ -136,24 +357,74 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="dashboard-wrapper" style={{ padding: "30px", background: "#fdfdff", minHeight: "100vh" }}>
+    <div className="dashboard-wrapper">
       
-      <div className="d-md-flex justify-content-between align-items-center mb-4">
-        <div className="animate-slide-in">
-          <h2 className="fw-bold mb-1" style={{ color: COLORS.total }}>{greeting} 👋</h2>
-          <p className="text-muted">Explore your real-time career analytics.</p>
+      {isAdmin && (
+        <div className="admin-fab-container">
+          {showAdminMenu && (
+            <div className="admin-menu animate-pop">
+              <button onClick={handlePostUpdate} className="admin-menu-item">
+                <span className="menu-icon">✉️</span> Post Update
+              </button>
+              <button onClick={handleEditUpdate} className="admin-menu-item">
+                <span className="menu-icon">✏️</span> Edit Updates
+              </button>
+              <button onClick={handleDeleteFromMenu} className="admin-menu-item text-danger">
+                <span className="menu-icon">🗑️</span> Delete Update
+              </button>
+            </div>
+          )}
+          <button 
+            className={`admin-fab-btn ${showAdminMenu ? 'active' : ''}`} 
+            onClick={() => setShowAdminMenu(!showAdminMenu)} 
+            title="Admin Actions"
+          >
+            <span className="fab-icon">{showAdminMenu ? '×' : '+'}</span>
+          </button>
         </div>
-        
-        <div className="inspiration-card p-3 shadow-sm d-none d-lg-block">
+      )}
+
+      <div className="marquee-nav-container full-width-marquee mb-4 shadow-sm animate-slide-up">
+        <div className="speaker-icon">📢</div>
+        <marquee 
+          behavior="scroll" 
+          direction="left" 
+          scrollamount="7" 
+          onMouseOver={(e) => e.currentTarget.stop()} 
+          onMouseOut={(e) => e.currentTarget.start()}
+        >
+          {updates.length > 0 ? (
+            updates.map((item) => (
+              <span 
+                key={item.id} 
+                className={`marquee-news-text ${isAdmin ? 'admin-item' : ''}`}
+              >
+                <span className="new-tag-burst">NEW</span> 
+                {item.content}
+              </span>
+            ))
+          ) : (
+            <span className="marquee-news-text">No real-time updates yet. Stay tuned for new hiring posts!</span>
+          )}
+        </marquee>
+      </div>
+
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+        <div className="animate-slide-in">
+          <h2 className="fw-bold mb-1 greeting-text" style={{ color: COLORS.total }}>{greeting} 👋</h2>
+          <p className="text-muted mb-0">Explore your real-time career analytics.</p>
+        </div>
+
+        <div className="inspiration-card p-3 shadow-sm d-lg-block">
           <div className="d-flex align-items-center gap-2 mb-1">
-              <span className="pulse-dot"></span>
-              <small className="text-uppercase fw-bold" style={{ fontSize: "0.65rem", color: "#041020", letterSpacing: "1px" }}>Motivate Yourself</small>
+            <span className="pulse-dot"></span>
+            <small className="text-uppercase fw-bold" style={{ fontSize: "0.65rem", color: "#041020", letterSpacing: "1px" }}>Motivate Yourself</small>
           </div>
-          <i className="fw-medium text-dark" style={{ fontSize: "0.85rem", lineHeight: "1.4" }}>"{quote}"</i>
+          <i className="fw-medium text-dark quote-text">"{quote}"</i>
         </div>
       </div>
 
-      <div className="mb-4 p-3 d-flex align-items-center justify-content-between shadow-sm main-banner animate-fade-in">
+      <div className="mb-4 p-3 d-flex flex-column flex-md-row align-items-md-center justify-content-between shadow-sm main-banner animate-fade-in gap-3">
         <div className="d-flex align-items-center gap-3">
           <div className="banner-icon">🔥</div>
           <div>
@@ -161,22 +432,20 @@ const Dashboard = () => {
             <small className="opacity-75">Your efficiency in reaching interview stages</small>
           </div>
         </div>
-        <h3 className="fw-bold mb-0 me-md-4">{interviewRate}%</h3>
+        <h3 className="fw-bold mb-0 me-md-4 conversion-rate-text">{interviewRate}%</h3>
       </div>
 
-      <Row className="g-3 mb-5">
+      <Row className="g-2 g-md-3 mb-4 mb-md-5">
         {summaryCards.map((item, index) => (
           <Col key={index} xs={6} sm={4} md={4} lg={2} className="animate-pop" style={{ animationDelay: `${index * 0.1}s` }}>
-            <div className="dashboard-card h-100 p-3 shadow-sm d-flex flex-column align-items-center justify-content-center text-center" style={{ 
-                borderRadius: "18px", background: "#fff", border: `1px solid ${item.color}22`
-            }}>
-              <div className="mb-2" style={{ fontSize: "1.8rem" }}>
+            <div className="dashboard-card h-100 p-2 p-md-3 shadow-sm d-flex flex-column align-items-center justify-content-center text-center">
+              <div className="mb-1 mb-md-2 card-icon">
                 {item.icon}
               </div>
-              <small className="text-uppercase fw-bold text-muted d-block mb-1" style={{ fontSize: "0.7rem", letterSpacing: "0.5px" }}>
+              <small className="text-uppercase fw-bold text-muted d-block mb-1 card-title-text">
                 {item.title}
               </small>
-              <h2 className="fw-black mb-0" style={{ color: item.color }}>{item.value}</h2>
+              <h2 className="fw-black mb-0 card-value-text" style={{ color: item.color }}>{item.value}</h2>
             </div>
           </Col>
         ))}
@@ -184,25 +453,25 @@ const Dashboard = () => {
 
       <Row className="g-4">
         <Col xs={12} lg={7}>
-          <Card className="shadow-lg border-0 h-100 animate-fade-in" style={{ borderRadius: "25px", background: "#fff" }}>
-            <Card.Body className="text-center p-4">
+          <Card className="shadow-lg border-0 h-100 animate-fade-in chart-card">
+            <Card.Body className="text-center p-3 p-md-4">
               <h6 className="mb-4 fw-bold text-dark">Job Application Status Distribution</h6>
               {pieData.length === 0 ? (
                 <div className="text-center py-5">
-                   <p className="text-muted mt-4">No specific interview rounds reached yet</p>
+                  <p className="text-muted mt-4">No specific interview rounds reached yet</p>
                 </div>
               ) : (
                 <>
-                  <div style={{ width: "100%", height: 360, position: "relative" }}>
-                    <ResponsiveContainer>
+                  <div className="chart-container">
+                    <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={pieData}
                           dataKey="value"
                           cx="50%"
                           cy="50%"
-                          innerRadius={70}
-                          outerRadius={120}
+                          innerRadius="60%"
+                          outerRadius="90%"
                           animationDuration={1500}
                           animationEasing="ease-out"
                           onMouseEnter={(_, index) => setActiveIndex(index)}
@@ -221,10 +490,10 @@ const Dashboard = () => {
                             />
                           ))}
                         </Pie>
-                        <text x="50%" y="48%" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: "24px", fontWeight: "800" }}>
+                        <text x="50%" y="48%" textAnchor="middle" dominantBaseline="middle" className="pie-center-total">
                           {counts.total}
                         </text>
-                        <text x="50%" y="55%" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: "7px", fill: "#6c757d", fontWeight: "700", letterSpacing: '1px' }}>
+                        <text x="50%" y="55%" textAnchor="middle" dominantBaseline="middle" className="pie-center-label">
                           TOTAL APPLICATIONS
                         </text>
                         <Tooltip />
@@ -232,9 +501,9 @@ const Dashboard = () => {
                     </ResponsiveContainer>
                   </div>
 
-                  <div className="d-flex justify-content-center flex-wrap gap-3 mt-3">
+                  <div className="d-flex justify-content-center flex-wrap gap-2 mt-3">
                     {pieData.map((item, index) => (
-                      <div key={index} className="d-flex align-items-center gap-2 px-2 py-1 rounded-pill bg-light animate-pop" style={{ fontSize: "12px", fontWeight: 600, animationDelay: `${index * 0.05}s` }}>
+                      <div key={index} className="d-flex align-items-center gap-2 px-2 py-1 rounded-pill bg-light animate-pop legend-item" style={{ animationDelay: `${index * 0.05}s` }}>
                         <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: item.color }} />
                         {item.name}: {item.value}
                       </div>
@@ -247,80 +516,225 @@ const Dashboard = () => {
         </Col>
 
         <Col xs={12} lg={5}>
-            <Card className="border-0 shadow-lg h-100 animate-fade-in" style={{ borderRadius: "25px", background: "#fff" }}>
-                <Card.Body className="p-4">
-                    <div className="mb-4">
-                        <h5 className="fw-bold mb-0">Journey Milestones</h5>
-                    </div>
-                    
-                    <div className="milestone-container px-2">
-                        {[
-                          { label: "Active Hunter", reached: counts.total > 0, val: counts.total, desc: "Applications submitted", color: COLORS.total },
-                          { label: "Interview", reached: (counts.screening + counts.tr) > 0, val: (counts.screening + counts.tr), desc: "Qualifying rounds", color: COLORS.tr },
-                          { label: "Finalist", reached: counts.hr > 0, val: counts.hr, desc: "HR & Culture rounds", color: COLORS.hr },
-                          { label: "Selected", reached: counts.offer > 0, val: counts.offer, desc: "Job offers secured", color: COLORS.offer },
-                        ].map((m, i) => (
-                          <div key={i} className={`milestone-item d-flex gap-3 mb-4 animate-slide-right ${m.reached ? 'active' : 'pending'}`} style={{ animationDelay: `${i * 0.15}s`, position: 'relative' }}>
-                            <div className="milestone-line-box" style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                              <div className="milestone-circle">{m.reached ? "✓" : i + 1}</div>
-                              {i < 3 && <div className="line-connector"></div>}
-                            </div>
-                            <div className="flex-grow-1">
-                              <div className="d-flex justify-content-between align-items-start">
-                                <h6 className="mb-0 fw-bold">{m.label}</h6>
-                                <span className="fw-bold text-dark" style={{ fontSize: "0.85rem" }}>{getProgression(m.val)}%</span>
-                              </div>
-                              <small className="text-muted d-block">{m.desc}</small>
-                              <div className="progress mt-2" style={{ height: "4px", borderRadius: "10px", background: "#f0f0f0" }}>
-                                <div className="progress-bar" style={{ width: `${getProgression(m.val)}%`, background: m.color, borderRadius: "10px", transition: 'width 1.5s ease-in-out' }}></div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                    </div>
+          <Card className="border-0 shadow-lg h-100 animate-fade-in milestone-card">
+            <Card.Body className="p-3 p-md-4">
+              <div className="mb-4">
+                <h5 className="fw-bold mb-0">Journey Milestones</h5>
+              </div>
 
-                    <div className="mt-4 p-3 rounded-4 animate-pop" style={{ background: "linear-gradient(135deg, #f8f9ff 0%, #eef2ff 100%)", border: "1px solid #e0e7ff", animationDelay: "0.6s" }}>
-                        <div className="d-flex justify-content-between mb-2">
-                           <h6 className="fw-bold mb-0" style={{ fontSize: "0.85rem" }}>Interview Readiness</h6>
-                           <span className="text-primary fw-bold" style={{ fontSize: "0.85rem" }}>{interviewRate > 40 ? 'High' : 'Improving'}</span>
-                        </div>
-                        <p className="text-muted" style={{ fontSize: "0.75rem", lineHeight: "1.4" }}>
-                           {counts.tr > 0 
-                             ? "You have technical rounds scheduled. Focus on Leetcode Mediums." 
-                             : "Focus on networking to unlock the 'Interviewee' milestone."}
-                        </p>
+              <div className="milestone-container px-1">
+                {[
+                  { label: "Active Hunter", reached: counts.total > 0, val: counts.total, desc: "Applications submitted", color: COLORS.total },
+                  { label: "Interview", reached: (counts.screening + counts.tr) > 0, val: (counts.screening + counts.tr), desc: "Qualifying rounds", color: COLORS.tr },
+                  { label: "Finalist", reached: counts.hr > 0, val: counts.hr, desc: "HR & Culture rounds", color: COLORS.hr },
+                  { label: "Selected", reached: counts.offer > 0, val: counts.offer, desc: "Job offers secured", color: COLORS.offer },
+                ].map((m, i) => (
+                  <div key={i} className={`milestone-item d-flex gap-3 mb-4 animate-slide-right ${m.reached ? 'active' : 'pending'}`} style={{ animationDelay: `${i * 0.15}s`, position: 'relative' }}>
+                    <div className="milestone-line-box">
+                      <div className="milestone-circle">{m.reached ? "✓" : i + 1}</div>
+                      {i < 3 && <div className="line-connector"></div>}
                     </div>
-                </Card.Body>
-            </Card>
+                    <div className="flex-grow-1">
+                      <div className="d-flex justify-content-between align-items-start">
+                        <h6 className="mb-0 fw-bold milestone-label">{m.label}</h6>
+                        <span className="fw-bold text-dark milestone-percent">{getProgression(m.val)}%</span>
+                      </div>
+                      <small className="text-muted d-block milestone-desc">{m.desc}</small>
+                      <div className="progress mt-2" style={{ height: "4px", borderRadius: "10px", background: "#f0f0f0" }}>
+                        <div className="progress-bar" style={{ width: `${getProgression(m.val)}%`, background: m.color, borderRadius: "10px", transition: 'width 1.5s ease-in-out' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 p-3 rounded-4 animate-pop readiness-box">
+                <div className="d-flex justify-content-between mb-2">
+                  <h6 className="fw-bold mb-0" style={{ fontSize: "0.85rem" }}>Interview Readiness</h6>
+                  <span className="text-primary fw-bold" style={{ fontSize: "0.85rem" }}>{interviewRate > 40 ? 'High' : 'Improving'}</span>
+                </div>
+                <p className="text-muted mb-0" style={{ fontSize: "0.75rem", lineHeight: "1.4" }}>
+                  {counts.tr > 0
+                    ? "You have technical rounds scheduled. Focus on Leetcode Mediums."
+                    : "Focus on networking to unlock the 'Interviewee' milestone."}
+                </p>
+              </div>
+            </Card.Body>
+          </Card>
         </Col>
       </Row>
 
       <style>
         {`
           @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-          .dashboard-wrapper { font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; }
-          .fw-black { font-weight: 800; }
           
-          /* ANIMATION DEFINITIONS */
+          .dashboard-wrapper { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            padding: 15px;
+            background: #fdfdff; 
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+          }
+
+          .marquee-nav-container.full-width-marquee {
+            background: #fff;
+            border-radius: 22px;
+            padding: 8px 20px;
+            display: flex;
+            align-items: center;
+            border-bottom: 3px solid #eee;
+            border-left: 6px solid ${COLORS.screening};
+            overflow: hidden;
+            width: 100%;
+          }
+          .speaker-icon { font-size: 1.5rem; margin-right: 15px; filter: drop-shadow(0 0 5px rgba(0,0,0,0.1)); }
+          
+          .marquee-news-text { 
+            margin-right: 80px; 
+            font-weight: 700; 
+            color: #14021c; 
+            font-size: 0.95rem; 
+            display: inline-flex; 
+            align-items: center; 
+            gap: 10px;
+          }
+
+          .new-tag-burst {
+            background: ${COLORS.rejected};
+            color: white;
+            padding: 4px 10px;
+            font-size: 0.6rem;
+            font-weight: 800;
+            clip-path: polygon(100% 50%, 90% 80%, 60% 90%, 50% 100%, 40% 90%, 10% 80%, 0% 50%, 10% 20%, 40% 10%, 50% 0%, 60% 10%, 90% 20%);
+            animation: tag-glow 1.5s infinite alternate;
+          }
+
+          .admin-fab-container {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 15px;
+          }
+
+          .admin-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            border: 1px solid #eee;
+          }
+
+          .admin-menu-item {
+            border: none;
+            background: transparent;
+            padding: 10px 20px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: ${COLORS.total};
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-radius: 10px;
+            transition: all 0.2s;
+            text-align: left;
+            white-space: nowrap;
+          }
+
+          .admin-menu-item:hover {
+            background: #f1f5f9;
+            color: ${COLORS.screening};
+          }
+
+          .admin-fab-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, ${COLORS.screening} 0%, #4f46e5 100%);
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 10px 25px rgba(29, 20, 209, 0.4);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          }
+          
+          .admin-fab-btn.active {
+            background: ${COLORS.total};
+            transform: rotate(0deg);
+          }
+
+          .admin-fab-btn:hover {
+            transform: scale(1.1) rotate(45deg);
+            box-shadow: 0 15px 35px rgba(29, 20, 209, 0.6);
+          }
+          .fab-icon { font-size: 32px; font-weight: 300; line-height: 1; }
+
+          @media (min-width: 768px) {
+            .dashboard-wrapper { padding: 30px; }
+          }
+
+          .fw-black { font-weight: 800; }
+          .greeting-text { font-size: 1.5rem; }
+          .quote-text { font-size: 0.8rem; line-height: 1.4; }
+          .card-title-text { font-size: 0.6rem; letter-spacing: 0.5px; }
+          .card-value-text { font-size: 1.5rem; }
+          .card-icon { font-size: 1.4rem; }
+
+          @media (min-width: 768px) {
+            .greeting-text { font-size: 2rem; }
+            .quote-text { font-size: 0.85rem; }
+            .card-title-text { font-size: 0.7rem; }
+            .card-value-text { font-size: 2rem; }
+            .card-icon { font-size: 1.8rem; }
+          }
+
+          .chart-container { width: 100%; height: 280px; position: relative; }
+          .pie-center-total { font-size: 20px; font-weight: 800; }
+          .pie-center-label { font-size: 6px; fill: #6c757d; font-weight: 700; letter-spacing: 1px; }
+
+          @media (min-width: 768px) {
+            .chart-container { height: 360px; }
+            .pie-center-total { font-size: 24px; }
+            .pie-center-label { font-size: 7px; }
+          }
+
+          .chart-card, .milestone-card { border-radius: 20px; background: #fff; }
+
+          @keyframes tag-glow { 0% { box-shadow: 0 0 0px ${COLORS.rejected}; transform: scale(1); } 50% { box-shadow: 0 0 8px ${COLORS.rejected}; transform: scale(1.05); } 100% { box-shadow: 0 0 0px ${COLORS.rejected}; transform: scale(1); } }
           @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
           @keyframes slideInLeft { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
+          @keyframes slideInUp { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
           @keyframes slideInRight { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
           @keyframes popIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
           @keyframes dot-pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(40, 29, 204, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(40, 29, 204, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(40, 29, 204, 0); } }
           @keyframes pulseText { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
 
-          /* UTILITY CLASSES */
           .animate-fade-in { animation: fadeIn 1s ease-out both; }
           .animate-slide-in { animation: slideInLeft 0.8s ease-out both; }
+          .animate-slide-up { animation: slideInUp 0.8s ease-out both; }
           .animate-slide-right { animation: slideInRight 0.6s ease-out both; }
           .animate-pop { animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
           .animate-pulse { animation: pulseText 2s infinite ease-in-out; }
 
           .inspiration-card { 
             border-left: 6px solid navy; 
-            border-radius: 20px; 
+            border-radius: 15px; 
             background: rgba(255, 255, 255, 0.8); 
             transition: all 0.3s ease;
+            width: 100%;
+          }
+          @media (min-width: 992px) {
+            .inspiration-card { border-radius: 20px; width: auto; max-width: 400px; }
           }
           .inspiration-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
           
@@ -328,21 +742,27 @@ const Dashboard = () => {
           
           .milestone-item.pending { opacity: 0.4; filter: grayscale(1); }
           .milestone-circle { 
-             width: 32px; height: 32px; border-radius: 50%; background: #f1f5f9; 
+             width: 28px; height: 28px; border-radius: 50%; background: #f1f5f9; 
              display: flex; align-items: center; justify-content: center; z-index: 2; 
-             border: 2px solid #fff; transition: all 0.3s ease;
+             border: 2px solid #fff; transition: all 0.3s ease; font-size: 0.8rem;
+          }
+          @media (min-width: 768px) {
+            .milestone-circle { width: 32px; height: 32px; font-size: 1rem; }
           }
           .active .milestone-circle { background: ${COLORS.offer}; color: white; box-shadow: 0 0 15px ${COLORS.offer}55; }
           
+          .milestone-line-box { position: relative; display: flex; flex-direction: column; align-items: center; }
           .line-connector { 
             width: 2px; 
-            height: 40px; 
+            height: 100%; 
             background: #e2e8f0; 
             position: absolute; 
-            top: 32px; 
-            left: 15px;
+            top: 28px; 
+            left: 50%;
+            transform: translateX(-50%);
             z-index: 1; 
           }
+          @media (min-width: 768px) { .line-connector { top: 32px; } }
           .active .line-connector { background: ${COLORS.offer}; }
           
           .main-banner { 
@@ -352,8 +772,18 @@ const Dashboard = () => {
           }
           .main-banner:hover { transform: scale(1.01); }
 
-          .dashboard-card { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+          .dashboard-card { 
+             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+             border-radius: 14px; background: #fff; border: 1px solid #00000011;
+          }
+          @media (min-width: 768px) {
+            .dashboard-card { border-radius: 18px; }
+          }
           .dashboard-card:hover { transform: translateY(-8px); box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important; }
+
+          .readiness-box { background: linear-gradient(135deg, #f8f9ff 0%, #eef2ff 100%); border: 1px solid #e0e7ff; }
+          .legend-item { font-size: 10px; font-weight: 600; }
+          @media (min-width: 768px) { .legend-item { font-size: 12px; } }
         `}
       </style>
     </div>

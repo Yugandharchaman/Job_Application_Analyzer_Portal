@@ -48,6 +48,7 @@ const CalendarPage = () => {
   const [loading, setLoading] = useState(true);
   const [showStreakModal, setShowStreakModal] = useState(false);
   const [streakCount, setStreakCount] = useState(0);
+  const [currentUser, setCurrentUser] = useState(null); // NEW: Track current user
 
   // MODIFIED: Wrapped in useCallback to fix dependency error
   const fetchData = useCallback(async () => {
@@ -56,19 +57,42 @@ const CalendarPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return setLoading(false);
 
+      setCurrentUser(user); // NEW: Store current user
+
       const todayStr = today.toLocaleDateString('en-CA'); 
 
-      const { data: userEntries, error } = await supabase
+      // NEW: Fetch manual job applications
+      const { data: manualEntries, error: manualError } = await supabase
         .from(STORAGE_KEY)
         .select("applieddate") 
         .eq("user_id", user.id);
       
-      if (error) throw error;
+      if (manualError) throw manualError;
 
+      // NEW: Fetch platform job applications (from job_applications_status)
+      const { data: platformEntries, error: platformError } = await supabase
+        .from('job_applications_status')
+        .select("created_at")
+        .eq("user_id", user.id)
+        .eq("is_applied", true);
+
+      if (platformError) throw platformError;
+
+      // NEW: Combine both sources and mark days as streak
       const historyMap = {};
-      if (userEntries) {
-        userEntries.forEach(entry => {
+      
+      // Add manual applications
+      if (manualEntries) {
+        manualEntries.forEach(entry => {
           historyMap[entry.applieddate] = "streak";
+        });
+      }
+
+      // Add platform applications (extract date from created_at timestamp)
+      if (platformEntries) {
+        platformEntries.forEach(entry => {
+          const dateKey = entry.created_at.split('T')[0]; // Extract YYYY-MM-DD
+          historyMap[dateKey] = "streak";
         });
       }
 
@@ -102,12 +126,64 @@ const CalendarPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [today]); // today is a dependency here
+  }, [today]);
 
   // MODIFIED: Added fetchData to dependencies
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // NEW: Real-time subscription for manual job applications
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const manualJobsChannel = supabase
+      .channel('manual-jobs-calendar-realtime')
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'job_applications',
+          filter: `user_id=eq.${currentUser.id}`
+        },
+        (payload) => {
+          // Refetch data when manual job is added/updated
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(manualJobsChannel);
+    };
+  }, [currentUser, fetchData]);
+
+  // NEW: Real-time subscription for platform job applications
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const platformJobsChannel = supabase
+      .channel('platform-jobs-calendar-realtime')
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'job_applications_status',
+          filter: `user_id=eq.${currentUser.id}`
+        },
+        (payload) => {
+          // Refetch data when platform job is marked as applied
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(platformJobsChannel);
+    };
+  }, [currentUser, fetchData]);
 
   const monthOptions = useMemo(() => {
     const options = [];
