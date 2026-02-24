@@ -1,6 +1,7 @@
 {
-  "short_name": "KnowledgeBase",
-  "name": "Knowledge Base - Notes & Interviews",
+  "short_name": "Job Analyzer",
+  "name": "Job Analyzer Platform",
+  "description": "Track jobs, interviews, notes & career insights.",
   "icons": [
     {
       "src": "favicon.ico",
@@ -10,16 +11,22 @@
     {
       "src": "logo192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
       "src": "logo512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "theme_color": "#6c5ddf",
-  "background_color": "#f8faff"
+  "background_color": "#f8faff",
+  "prefer_related_applications": false,
+  "categories": ["productivity", "business"]
 }
