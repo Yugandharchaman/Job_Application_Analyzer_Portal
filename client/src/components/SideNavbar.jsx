@@ -338,22 +338,37 @@ const SideNavbar = () => {
             position: fixed;
             top: 0;
             left: 0;
-            min-height: 100vh;
+            height: 100vh;
             width: 240px;
             background-color: rgba(6, 6, 26, 1);
             color: #cfd3ff;
             z-index: 1050;
             transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
-            overflow-y: auto;
-            overflow-x: hidden;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
             padding: 20px 16px;
             padding-top: 28px;
             border-top-right-radius: 25px;
           }
-          .app-sidebar::-webkit-scrollbar { width: 3px; }
-          .app-sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+
+          /* ── Scrollable nav area — only the menu scrolls, logout stays pinned ── */
+          .sidebar-scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            min-height: 0;
+          }
+          .sidebar-scroll-area::-webkit-scrollbar { width: 3px; }
+          .sidebar-scroll-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+
+          /* ── Logout always pinned to bottom ── */
+          .sidebar-logout {
+            flex-shrink: 0;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding-top: 14px;
+            margin-top: 10px;
+          }
 
           /* ── Breakpoints ── */
 
@@ -385,6 +400,7 @@ const SideNavbar = () => {
           @supports (padding: env(safe-area-inset-top)) {
             .app-sidebar {
               padding-top: calc(28px + env(safe-area-inset-top)) !important;
+              padding-bottom: calc(14px + env(safe-area-inset-bottom)) !important;
             }
             .chatgpt-hamburger {
               top: calc(10px + env(safe-area-inset-top)) !important;
@@ -430,7 +446,7 @@ const SideNavbar = () => {
         className={`app-sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}
       >
         {/* Close button inside sidebar (mobile only) */}
-        <div className="d-lg-none text-end mb-2" style={{ marginTop: '-8px' }}>
+        <div className="d-lg-none text-end mb-2" style={{ marginTop: '-8px', flexShrink: 0 }}>
           <button
             onClick={() => setIsMobileMenuOpen(false)}
             style={{
@@ -444,7 +460,7 @@ const SideNavbar = () => {
           </button>
         </div>
 
-        {/* Profile Avatar */}
+        {/* Profile Avatar — fixed, not inside scroll area */}
         <div 
           className="profile-trigger d-flex justify-content-center align-items-center"
           onClick={() => {
@@ -452,7 +468,7 @@ const SideNavbar = () => {
             toast("Viewing Profile", { icon: "👤" });
             if(window.innerWidth <= 1024) setIsMobileMenuOpen(false);
           }}
-          style={{ cursor: 'pointer', marginBottom: "32px" }}
+          style={{ cursor: 'pointer', marginBottom: "32px", flexShrink: 0 }}
         >
           <div className="position-relative">
             <div className="bg-white d-flex align-items-center justify-content-center shadow-sm" 
@@ -606,33 +622,35 @@ const SideNavbar = () => {
           </Modal.Body>
         </Modal>
 
-        {/* Nav Menu */}
-        <Nav className="flex-column gap-1 flex-grow-1">
-          {menu.map((item, index) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <Nav.Link as={Link} to={item.path} key={index}
-                onClick={() => setIsMobileMenuOpen(false)}
-                style={{
-                  display: "flex", alignItems: "center", gap: "12px", padding: "11px 14px", borderRadius: "12px",
-                  color: isActive ? "#d6c7ff" : "#b6bbff",
-                  background: isActive ? "linear-gradient(90deg, rgba(108,93,255,0.35), rgba(108,93,255,0.15))" : "transparent",
-                  boxShadow: isActive ? "inset 0 0 12px rgba(120,100,255,0.25)" : "none",
-                  transition: "all 0.25s ease", textDecoration: "none", fontSize: "14.5px",
-                }}
-              >
-                <span className="nav-notification-container" style={{ color: isActive ? "#bfa8ff" : "#9aa2ff" }}>
-                  {item.icon}
-                  {item.hasNotification && <div className="blinking-dot" />}
-                </span>
-                {item.name}
-              </Nav.Link>
-            );
-          })}
-        </Nav>
+        {/* ── Scrollable Nav Menu ── */}
+        <div className="sidebar-scroll-area">
+          <Nav className="flex-column gap-1">
+            {menu.map((item, index) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Nav.Link as={Link} to={item.path} key={index}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: "12px", padding: "11px 14px", borderRadius: "12px",
+                    color: isActive ? "#d6c7ff" : "#b6bbff",
+                    background: isActive ? "linear-gradient(90deg, rgba(108,93,255,0.35), rgba(108,93,255,0.15))" : "transparent",
+                    boxShadow: isActive ? "inset 0 0 12px rgba(120,100,255,0.25)" : "none",
+                    transition: "all 0.25s ease", textDecoration: "none", fontSize: "14.5px",
+                  }}
+                >
+                  <span className="nav-notification-container" style={{ color: isActive ? "#bfa8ff" : "#9aa2ff" }}>
+                    {item.icon}
+                    {item.hasNotification && <div className="blinking-dot" />}
+                  </span>
+                  {item.name}
+                </Nav.Link>
+              );
+            })}
+          </Nav>
+        </div>
 
-        {/* Logout */}
-        <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "14px", marginTop: "14px" }}>
+        {/* ── Logout pinned to bottom ── */}
+        <div className="sidebar-logout">
           <button style={{ display: "flex", alignItems: "center", gap: "12px", padding: "11px 14px", borderRadius: "12px", color: "#ff6b6b", background: "transparent", border: "none", width: "100%", textAlign: "left", fontSize: "14.5px", cursor: "pointer", transition: "all 0.25s" }}
             onClick={handleLogout}>
             <LogOut size={18} /> Logout

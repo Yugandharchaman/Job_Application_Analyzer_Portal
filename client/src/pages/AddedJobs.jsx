@@ -160,7 +160,7 @@ const AddedJobs = () => {
       ...item,
       isFromPlatform: true, // Flag to identify platform jobs
       displayData: item.admin_jobs
-    })),
+     })),
     ...filteredManualJobs.map(job => ({
       ...job,
       isFromPlatform: false,
@@ -268,9 +268,13 @@ const AddedJobs = () => {
             <Card.Body>
               <div className="d-flex justify-content-between mb-2">
                 <h6 className="fw-bold">{job.company_name}</h6>
-                {/* NEW: Status Dropdown for Platform Jobs */}
+                {/* NEW: Status Dropdown with Border Styling */}
                 <Dropdown align="end">
-                  <Dropdown.Toggle variant={statusColors[currentStatus]} size="sm">
+                  <Dropdown.Toggle 
+                    variant={statusColors[currentStatus]} 
+                    size="sm"
+                    className="status-dropdown-toggle"
+                  >
                     {currentStatus}
                   </Dropdown.Toggle>
                   <Dropdown.Menu>
@@ -329,7 +333,11 @@ const AddedJobs = () => {
               <div className="d-flex justify-content-between mb-2">
                 <h6 className="fw-bold">{job.company}</h6>
                 <Dropdown align="end">
-                  <Dropdown.Toggle variant={statusColors[job.status]} size="sm">
+                  <Dropdown.Toggle 
+                    variant={statusColors[job.status]} 
+                    size="sm"
+                    className="status-dropdown-toggle"
+                  >
                     {job.status}
                   </Dropdown.Toggle>
                   <Dropdown.Menu>
@@ -407,32 +415,47 @@ const AddedJobs = () => {
   return (
     <div style={{ padding: "24px", minHeight: "100vh", position: "relative" }}>
       <Toaster position="top-right" />
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h4 className="fw-semibold">Recently Applied Jobs 🎉</h4>
-        <Card className="text-center px-3 py-2" style={{ backgroundColor: NAVBAR_COLOR, color: "#fff", border: "none", borderRadius: "12px" }}>
-          <h6 className="mb-1 small opacity-75">{dateCardText}</h6>
-          <Badge bg="light" text="dark" pill>{countForDate}</Badge>
-        </Card>
-      </div>
+      
+      {/* HEADER SECTION - RESPONSIVE */}
+      <Row className="align-items-center mb-4 gy-3">
+        <Col xs={12} sm={8} className="text-center text-sm-start">
+          <h4 className="fw-semibold mb-0">Recently Applied Jobs 🎉</h4>
+        </Col>
+        {/* MODIFIED: Enhanced Today Badge Card */}
+        <Col xs={12} sm={4} className="d-flex justify-content-center justify-content-sm-end">
+          <Card className="text-center px-4 py-2 today-badge-card">
+            <h6 className="mb-1 small text-uppercase fw-bold opacity-75">{dateCardText}</h6>
+            <div className="d-flex align-items-center justify-content-center gap-2">
+                <span style={{ fontSize: '1.2rem', fontWeight: '800' }}>{countForDate}</span>
+                <Badge bg="light" text="dark" pill style={{ fontSize: '0.7rem' }}>Applications</Badge>
+            </div>
+          </Card>
+        </Col>
+      </Row>
 
-      <div className="d-flex gap-3 justify-content-end mb-4">
-        <Form.Control
-          placeholder="Search by company Name"
-          style={{ maxWidth: 260, borderRadius: "8px" }}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <Form.Control
-          type="date"
-          style={{ maxWidth: 200, borderRadius: "8px" }}
-          value={filterDate}
-          max={todayStr}
-          onChange={(e) => {
-            setFilterDate(e.target.value);
-            setCurrentPage(1);
-          }}
-        />
-      </div>
+      {/* FILTER SECTION - RESPONSIVE */}
+      <Row className="mb-4 gy-3 justify-content-end">
+        <Col xs={12} md={4} lg={3}>
+          <Form.Control
+            placeholder="Search by company Name"
+            style={{ borderRadius: "8px" }}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </Col>
+        <Col xs={12} md={3} lg={2}>
+          <Form.Control
+            type="date"
+            style={{ borderRadius: "8px" }}
+            value={filterDate}
+            max={todayStr}
+            onChange={(e) => {
+              setFilterDate(e.target.value);
+              setCurrentPage(1);
+            }}
+          />
+        </Col>
+      </Row>
 
       {loading ? (
         <div className="text-center py-5" style={{ minHeight: "300px", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -440,7 +463,7 @@ const AddedJobs = () => {
         </div>
       ) : allFilteredJobs.length === 0 ? (
         <div className="text-center py-5 d-flex flex-column align-items-center">
-          <img src={NoJobsImg} alt="No jobs" style={{ maxWidth: 400, opacity: 0.8 }} />
+          <img src={NoJobsImg} alt="No jobs" style={{ maxWidth: "100%", width: "400px", opacity: 0.8 }} />
           <h5 className="mt-3 text-muted">No applications found for this selection.</h5>
         </div>
       ) : (
@@ -450,7 +473,7 @@ const AddedJobs = () => {
           </Row>
 
           {totalPages > 1 && (
-            <div className="d-flex justify-content-center mt-5 mb-4">
+            <div className="d-flex justify-content-center mt-5 mb-4 overflow-auto">
               <Pagination>
                 <Pagination.First onClick={() => setCurrentPage(1)} disabled={currentPage === 1} />
                 <Pagination.Prev onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1} />
@@ -501,7 +524,36 @@ const AddedJobs = () => {
             border: 1px solid ${NAVBAR_COLOR};
           }
           
-          /* NEW: Platform Job Card Special Styling */
+          /* Today Badge Card Enhancement */
+          .today-badge-card {
+             background: linear-gradient(135deg, ${NAVBAR_COLOR} 0%, #2a285c 100%);
+             color: #fff;
+             border: none;
+             border-radius: 15px;
+             min-width: 140px;
+             box-shadow: 0 4px 15px rgba(17, 16, 46, 0.2);
+          }
+
+          /* Status Dropdown Border Styling */
+          .status-dropdown-toggle {
+             border: 2px solid rgba(255,255,255,0.4) !important;
+             border-radius: 8px !important;
+             font-weight: 600 !important;
+             transition: all 0.2s ease;
+             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+          }
+          .status-dropdown-toggle:hover {
+             border: 2px solid rgba(255,255,255,0.8) !important;
+             transform: scale(1.02);
+          }
+          .btn-secondary.status-dropdown-toggle { border-color: #6c757d !important; background: transparent; color: #6c757d; }
+          .btn-info.status-dropdown-toggle { border-color: #0dcaf0 !important; background: transparent; color: #0dcaf0; }
+          .btn-primary.status-dropdown-toggle { border-color: #0d6efd !important; background: transparent; color: #0d6efd; }
+          .btn-warning.status-dropdown-toggle { border-color: #ffc107 !important; background: transparent; color: #856404; }
+          .btn-success.status-dropdown-toggle { border-color: #198754 !important; background: transparent; color: #198754; }
+          .btn-danger.status-dropdown-toggle { border-color: #dc3545 !important; background: transparent; color: #dc3545; }
+
+          /* Platform Job Card Special Styling */
           .platform-job-card {
             position: relative;
             border: 2px solid #6c5dff;
@@ -512,7 +564,6 @@ const AddedJobs = () => {
             box-shadow: 0 12px 30px rgba(108, 93, 255, 0.2) !important;
           }
           
-          /* NEW: Platform Badge Styling */
           .platform-badge-container {
             position: absolute;
             top: -12px;
@@ -544,6 +595,17 @@ const AddedJobs = () => {
             border-radius: 6px;
             margin: 0 2px;
             border: 1px solid #dee2e6;
+          }
+
+          @media (max-width: 576px) {
+            .today-badge-card {
+                padding: 10px 15px !important;
+                border-radius: 12px !important;
+                margin-top: 10px;
+            }
+            .pagination {
+                font-size: 0.8rem;
+            }
           }
         `}
       </style>

@@ -577,12 +577,25 @@ const RecentJobs = () => {
             top: 80px;
             right: 20px;
             z-index: 9999;
-            min-width: 350px;
+            min-width: 280px;
+            max-width: calc(100vw - 40px);
             box-shadow: 0 12px 40px rgba(0,0,0,0.25);
             border-radius: 16px;
             animation: toastSlideIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
             border: 2px solid rgba(255,255,255,0.2);
             backdrop-filter: blur(10px);
+          }
+          @media (max-width: 480px) {
+            .custom-toast {
+              top: auto;
+              bottom: 20px;
+              right: 12px;
+              left: 12px;
+              min-width: unset;
+              max-width: unset;
+              width: auto;
+              border-radius: 14px;
+            }
           }
           @keyframes toastSlideIn {
             0% {
@@ -599,6 +612,14 @@ const RecentJobs = () => {
             100% {
               transform: translateX(0) translateY(0) rotate(0deg);
               opacity: 1;
+            }
+          }
+          @media (max-width: 480px) {
+            @keyframes toastSlideIn {
+              0% { transform: translateY(120px); opacity: 0; }
+              60% { transform: translateY(-6px); opacity: 1; }
+              80% { transform: translateY(3px); }
+              100% { transform: translateY(0); opacity: 1; }
             }
           }
           .toast-header {
@@ -639,7 +660,7 @@ const RecentJobs = () => {
             top: 24px;
             right: 24px;
             z-index: 99999;
-            width: 380px;
+            width: min(380px, calc(100vw - 24px));
             background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
             border-radius: 20px;
             padding: 0;
@@ -647,6 +668,16 @@ const RecentJobs = () => {
             box-shadow: 0 24px 60px rgba(108, 93, 255, 0.35), 0 8px 24px rgba(0,0,0,0.4);
             animation: emailToastIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
             border: 1px solid rgba(108, 93, 255, 0.3);
+          }
+          @media (max-width: 480px) {
+            .email-toast-modern {
+              top: auto;
+              bottom: 16px;
+              right: 12px;
+              left: 12px;
+              width: auto;
+              border-radius: 16px;
+            }
           }
           @keyframes emailToastIn {
             0% { transform: translateY(-120px) scale(0.8) rotate(-3deg); opacity: 0; }
@@ -865,6 +896,86 @@ const RecentJobs = () => {
           .toggle-switch.on .toggle-knob {
             transform: translateX(18px);
           }
+
+          /* ── Admin Modal responsive ── */
+          .admin-modal-dialog {
+            margin: 0.5rem auto;
+          }
+          @media (max-width: 576px) {
+            .admin-modal-body {
+              padding: 16px !important;
+            }
+            .admin-modal-body .form-control-prof {
+              font-size: 0.88rem;
+              padding: 9px 12px;
+            }
+            .admin-modal-body .form-label-prof {
+              font-size: 0.75rem;
+            }
+            .admin-modal-body .mb-3 {
+              margin-bottom: 0.6rem !important;
+            }
+            .admin-modal-title {
+              font-size: 1.1rem !important;
+            }
+          }
+
+          /* ── Header responsive: stack on small screens ── */
+          .recent-jobs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0;
+            flex-wrap: wrap;
+            gap: 12px;
+          }
+          @media (max-width: 576px) {
+            .recent-jobs-header {
+              flex-direction: column;
+            }
+            .recent-jobs-header h1 {
+              font-size: 1.8rem !important;
+              letter-spacing: -1px !important;
+            }
+            .recent-jobs-header p {
+              font-size: 0.95rem !important;
+            }
+          }
+
+          /* ── Jobs section header: stack email alerts below title on mobile ── */
+          .jobs-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 10px;
+          }
+
+          /* ── Tab + email toggle: stack on very small screens ── */
+          .tab-email-row {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 1rem;
+          }
+
+          /* ── Disclaimer card responsive ── */
+          @media (max-width: 576px) {
+            .disclaimer-card {
+              flex-direction: column;
+              gap: 14px;
+              padding: 20px;
+            }
+            .disclaimer-card h5 {
+              font-size: 0.85rem !important;
+            }
+            .disclaimer-card p {
+              font-size: 0.8rem !important;
+            }
+          }
         `}
       </style>
 
@@ -917,7 +1028,7 @@ const RecentJobs = () => {
       )}
 
       {/* Header */}
-      <div className="d-flex justify-content-between align-items-start mb-0">
+      <div className="recent-jobs-header">
         <div>
           <h1 className="fw-bold" style={{ fontSize: '2.5rem', letterSpacing: '-1.5px', color: '#0f172a' }}>Recent Openings</h1>
           <p className="text-muted" style={{ fontSize: '1.1rem' }}>Direct access to career opportunities within premier corporate ecosystems.</p>
@@ -957,7 +1068,7 @@ const RecentJobs = () => {
       </div>
 
       <div className="disclaimer-card shadow-lg">
-        <div style={{ background: 'rgba(239, 68, 68, 0.2)', padding: '12px', borderRadius: '15px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+        <div style={{ background: 'rgba(239, 68, 68, 0.2)', padding: '12px', borderRadius: '15px', border: '1px solid rgba(239, 68, 68, 0.3)', flexShrink: 0 }}>
           <Shield size={32} color="#70d1da" />
         </div>
         <div style={{ zIndex: 1 }}>
@@ -971,7 +1082,7 @@ const RecentJobs = () => {
 
       {/* Main Jobs Area */}
       <div>
-        <div className="d-flex justify-content-between align-items-center mb-4">
+        <div className="jobs-section-header">
           <h3 className="fw-bold mb-0" style={{ color: '#1e293b' }}>Direct Career Openings</h3>
 
           {/* Email Alerts Toggle - top right of this section */}
@@ -991,7 +1102,7 @@ const RecentJobs = () => {
         </div>
 
         {!loading && (
-          <div className="d-flex justify-content-end mb-4">
+          <div className="tab-email-row">
             <div className="toggle-container">
               <button
                 className={`toggle-btn ${activeTab === 'live' ? 'active' : ''}`}
@@ -1095,22 +1206,22 @@ const RecentJobs = () => {
       </div>
 
       {/* ADMIN MODAL */}
-      <Modal show={showAdminForm} onHide={() => setShowAdminForm(false)} size="lg" centered>
+      <Modal show={showAdminForm} onHide={() => setShowAdminForm(false)} size="lg" centered dialogClassName="admin-modal-dialog">
         <Modal.Header closeButton className="border-0 pb-0">
-          <Modal.Title className="fw-bold" style={{ color: '#0f172a' }}>Post New Career Opening</Modal.Title>
+          <Modal.Title className="fw-bold admin-modal-title" style={{ color: '#0f172a' }}>Post New Career Opening</Modal.Title>
         </Modal.Header>
-        <Modal.Body className="p-4">
+        <Modal.Body className="p-4 admin-modal-body">
           <Form onSubmit={handleAdminSubmit}>
             <Row>
-              <Col md={6} className="mb-3">
+              <Col xs={12} md={6} className="mb-3">
                 <Form.Label className="form-label-prof">Company Name</Form.Label>
                 <Form.Control required className="form-control-prof" placeholder="e.g. Microsoft" value={newJob.company_name} onChange={e => setNewJob({ ...newJob, company_name: e.target.value })} />
               </Col>
-              <Col md={6} className="mb-3">
+              <Col xs={12} md={6} className="mb-3">
                 <Form.Label className="form-label-prof">Job Role</Form.Label>
                 <Form.Control required className="form-control-prof" placeholder="e.g. Backend Developer" value={newJob.role} onChange={e => setNewJob({ ...newJob, role: e.target.value })} />
               </Col>
-              <Col md={6} className="mb-3">
+              <Col xs={12} md={6} className="mb-3">
                 <Form.Label className="form-label-prof">Experience Level</Form.Label>
                 <Form.Select 
                   required 
@@ -1123,15 +1234,15 @@ const RecentJobs = () => {
                   ))}
                 </Form.Select>
               </Col>
-              <Col md={6} className="mb-3">
+              <Col xs={12} md={6} className="mb-3">
                 <Form.Label className="form-label-prof">Annual Package (LPA)</Form.Label>
                 <Form.Control className="form-control-prof" placeholder="e.g. 10-12 LPA" value={newJob.salary} onChange={e => setNewJob({ ...newJob, salary: e.target.value })} />
               </Col>
-              <Col md={6} className="mb-3">
+              <Col xs={12} md={6} className="mb-3">
                 <Form.Label className="form-label-prof">Location</Form.Label>
                 <Form.Control className="form-control-prof" placeholder="Remote / City" value={newJob.location} onChange={e => setNewJob({ ...newJob, location: e.target.value })} />
               </Col>
-              <Col md={6} className="mb-3">
+              <Col xs={12} md={6} className="mb-3">
                 <Form.Label className="form-label-prof">Required Degrees (Multiple)</Form.Label>
                 <Dropdown autoClose="outside">
                   <Dropdown.Toggle className="degree-multi-select shadow-none">
@@ -1147,20 +1258,20 @@ const RecentJobs = () => {
                   </Dropdown.Menu>
                 </Dropdown>
               </Col>
-              <Col md={6} className="mb-3">
+              <Col xs={12} md={6} className="mb-3">
                 <Form.Label className="form-label-prof">Eligible Branches</Form.Label>
                 <Form.Control className="form-control-prof" placeholder="e.g. CSE, IT, ECE" value={newJob.eligible_branches} onChange={e => setNewJob({ ...newJob, eligible_branches: e.target.value })} />
               </Col>
-              <Col md={6} className="mb-3">
+              <Col xs={12} md={6} className="mb-3">
                 <Form.Label className="form-label-prof">Minimum CGPA</Form.Label>
                 <Form.Control className="form-control-prof" placeholder="e.g. 7.5 or N/A" value={newJob.min_cgpa} onChange={e => setNewJob({ ...newJob, min_cgpa: e.target.value })} />
               </Col>
-              <Col md={6} className="mb-3">
+              <Col xs={12} md={6} className="mb-3">
                 <Form.Label className="form-label-prof">Target Batch</Form.Label>
                 <Form.Control className="form-control-prof" placeholder="2024, 2025" value={newJob.passout_year} onChange={e => setNewJob({ ...newJob, passout_year: e.target.value })} />
               </Col>
               {/* CHANGE 1: Application Deadline is now mandatory - required attribute restored */}
-              <Col md={6} className="mb-3">
+              <Col xs={12} md={6} className="mb-3">
                 <Form.Label className="form-label-prof">
                   Application Deadline <span style={{ color: '#ef4444' }}>*</span>
                 </Form.Label>
@@ -1172,7 +1283,7 @@ const RecentJobs = () => {
                   onChange={e => setNewJob({ ...newJob, expiry_date: e.target.value })}
                 />
               </Col>
-              <Col md={12} className="mb-3">
+              <Col xs={12} className="mb-3">
                 <Form.Label className="form-label-prof">Direct Application URL</Form.Label>
                 <Form.Control className="form-control-prof" type="url" required placeholder="https://company.com/careers/..." value={newJob.apply_link} onChange={e => setNewJob({ ...newJob, apply_link: e.target.value })} />
               </Col>
