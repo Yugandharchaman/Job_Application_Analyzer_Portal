@@ -495,11 +495,11 @@ const SideNavbar = () => {
                     <Form.Control type="number" step="0.01" className="edit-input"  disabled={!isEditing} value={profile.degree_cgpa || ""} onChange={(e) => setProfile({...profile, degree_cgpa: e.target.value})} />
                   </Col>
                   <Col xs={4}>
-                    <label className="text-muted small mb-1">Inter CGPA/Marks</label>
+                    <label className="text-muted small mb-1">Inter/diploma CGPA/Marks</label>
                     <Form.Control type="number" step="0.01" className="edit-input" disabled={!isEditing} value={profile.inter_cgpa || ""} onChange={(e) => setProfile({...profile, inter_cgpa: e.target.value})} />
                   </Col>
                   <Col xs={4}>
-                    <label className="text-muted small mb-1">SSC CGPA</label>
+                    <label className="text-muted small mb-1">SSC CGPA/Marks</label>
                     <Form.Control type="number" step="0.01" className="edit-input"  disabled={!isEditing} value={profile.ssc_cgpa || ""} onChange={(e) => setProfile({...profile, ssc_cgpa: e.target.value})} />
                   </Col>
                 </Row>

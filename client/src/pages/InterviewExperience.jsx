@@ -93,7 +93,8 @@ const InterviewExperience = () => {
         role: formData.role,
         questions: formData.questions,
         interview_date: formData.interview_date,
-        time_slot: formData.time_slot,
+        // FIX: Ensure empty string is sent as null to satisfy Postgres 'time' type
+        time_slot: formData.time_slot || null, 
         post_time: systemPostTime,
         user_name: fullName, 
         user_id: sessionUser.id,
@@ -329,6 +330,7 @@ const InterviewExperience = () => {
                   <SkeletonCard />
                   <SkeletonCard />
                   <SkeletonCard />
+                  <SkeletonCard />
                 </motion.div>
               ) : currentRecords.length > 0 ? (
                 <>
@@ -364,7 +366,7 @@ const InterviewExperience = () => {
 
                                 <Badge bg="light" text="dark" className="border d-flex align-items-center gap-1">
                                     <Clock size={12}/> 
-                                    {item.time_slot ? item.time_slot.slice(0, 5) : "No Time Set"}
+                                    {item.time_slot ? item.time_slot.slice(0, 5) : ""}
                                 </Badge>
                               </div>
                               

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Container, Form, Button } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { Key, ArrowRight, Loader, Lock } from 'react-feather';
+import {ArrowRight, Loader} from 'react-feather';
 import toast, { Toaster } from 'react-hot-toast';
 
 const ResetPassword = () => {

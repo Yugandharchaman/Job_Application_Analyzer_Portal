@@ -3,7 +3,7 @@ import { Modal, Button, Form, Row, Col, Dropdown, Toast } from "react-bootstrap"
 import {
   ExternalLink, Shield, Globe,
   ChevronLeft, ChevronRight, Layers,
-  Cpu, Activity, Plus, ArrowRight, Check
+  Cpu, Activity, Plus, ArrowRight, Check, Mail
 } from "react-feather";
 import { supabase } from "../supabaseClient";
 
@@ -33,6 +33,11 @@ const RecentJobs = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastVariant, setToastVariant] = useState("success");
+
+  // --- NEW: Email Alerts toggle state ---
+  const [emailAlerts, setEmailAlerts] = useState(false);
+  // CHANGE 2: Separate modern toast for email alerts
+  const [showEmailToast, setShowEmailToast] = useState(false);
 
   const degreeOptions = ["B.Tech", "BBA", "MBA", "MCA", "B.com", "M.Tech", "BE", "Any Degree"];
   const experienceOptions = ["Fresher", "0-1 Years", "1-2 Years", "2-5 Years", "5+ Years"];
@@ -148,6 +153,13 @@ const RecentJobs = () => {
     setToastVariant(variant);
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
+  };
+
+  // CHANGE 2: Email Alerts toggle handler - shows modern separate toast
+  const handleEmailAlertsToggle = () => {
+    setEmailAlerts(prev => !prev);
+    setShowEmailToast(true);
+    setTimeout(() => setShowEmailToast(false), 4000);
   };
 
   useEffect(() => {
@@ -289,7 +301,8 @@ const RecentJobs = () => {
       eligible_branches: newJob.eligible_branches,
       min_cgpa: newJob.min_cgpa,
       passout_year: newJob.passout_year,
-      expiry_date: newJob.expiry_date,
+      // CHANGE 1: expiry_date is now mandatory so it will always have a value
+      expiry_date: newJob.expiry_date || null,
       apply_link: newJob.apply_link,
       experience: newJob.experience // Included experience in submission
     };
@@ -491,6 +504,15 @@ const RecentJobs = () => {
             transform: translateY(-2px);
           }
 
+          /* ADDED: Disabled apply button style when job is already applied */
+          .apply-btn-primary.btn-applied-disabled {
+            background: #94a3b8 !important;
+            cursor: not-allowed !important;
+            pointer-events: none !important;
+            transform: none !important;
+            opacity: 0.75;
+          }
+
           /* MODIFIED: I Applied Checkbox Styles - ONE TIME ONLY */
           .applied-checkbox-container {
             display: flex;
@@ -611,6 +633,121 @@ const RecentJobs = () => {
             50% { box-shadow: 0 12px 40px rgba(34, 197, 94, 0.4); }
           }
 
+          /* CHANGE 2: Modern Email Alert Toast */
+          .email-toast-modern {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 99999;
+            width: 380px;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            border-radius: 20px;
+            padding: 0;
+            overflow: hidden;
+            box-shadow: 0 24px 60px rgba(108, 93, 255, 0.35), 0 8px 24px rgba(0,0,0,0.4);
+            animation: emailToastIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border: 1px solid rgba(108, 93, 255, 0.3);
+          }
+          @keyframes emailToastIn {
+            0% { transform: translateY(-120px) scale(0.8) rotate(-3deg); opacity: 0; }
+            60% { transform: translateY(8px) scale(1.02) rotate(0deg); opacity: 1; }
+            80% { transform: translateY(-4px) scale(0.99); }
+            100% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
+          }
+          .email-toast-glow-bar {
+            height: 3px;
+            background: linear-gradient(90deg, #6c5dff, #a78bfa, #6c5dff);
+            background-size: 200% 100%;
+            animation: shimmer 2s linear infinite;
+          }
+          @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+          .email-toast-body-inner {
+            padding: 20px 22px 22px;
+            position: relative;
+          }
+          .email-toast-icon-wrap {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: rgba(108, 93, 255, 0.2);
+            border: 1px solid rgba(108, 93, 255, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            animation: iconPulse 2s ease-in-out infinite;
+          }
+          @keyframes iconPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(108, 93, 255, 0.3); }
+            50% { box-shadow: 0 0 0 8px rgba(108, 93, 255, 0); }
+          }
+          .email-toast-title {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: 0.2px;
+            margin-bottom: 3px;
+          }
+          .email-toast-subtitle {
+            font-size: 0.78rem;
+            color: #94a3b8;
+            font-weight: 500;
+          }
+          .email-toast-badge {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 20px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            white-space: nowrap;
+          }
+          .email-toast-desc {
+            font-size: 0.82rem;
+            color: #94a3b8;
+            line-height: 1.6;
+            margin-top: 14px;
+            padding: 12px 14px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.06);
+          }
+          .email-toast-close-btn {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            border: none;
+            color: #64748b;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            line-height: 1;
+          }
+          .email-toast-close-btn:hover { background: rgba(255,255,255,0.18); color: #fff; }
+          .email-toast-progress {
+            height: 3px;
+            background: rgba(255,255,255,0.06);
+            margin: 16px 0 0;
+            border-radius: 10px;
+            overflow: hidden;
+          }
+          .email-toast-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #6c5dff, #a78bfa);
+            border-radius: 10px;
+            animation: progressDrain 4s linear forwards;
+          }
+          @keyframes progressDrain { from { width: 100%; } to { width: 0%; } }
+
           .form-control-prof {
             border: 1.5px solid #e2e8f0;
             padding: 10px 15px;
@@ -678,6 +815,56 @@ const RecentJobs = () => {
             transition: background 0.2s;
           }
           .degree-item:hover { background: #f8f9fc; }
+
+          /* NEW: Email Alerts toggle styles */
+          .email-alerts-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+          }
+          .email-alerts-toggle:hover {
+            border-color: #6c5dff;
+            box-shadow: 0 4px 12px rgba(108, 93, 255, 0.1);
+          }
+          .email-alerts-label {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #475569;
+          }
+          .toggle-switch {
+            position: relative;
+            width: 40px;
+            height: 22px;
+            background: #e2e8f0;
+            border-radius: 11px;
+            transition: background 0.3s ease;
+            flex-shrink: 0;
+          }
+          .toggle-switch.on {
+            background: #6c5dff;
+          }
+          .toggle-knob {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 16px;
+            height: 16px;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform 0.3s ease;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+          }
+          .toggle-switch.on .toggle-knob {
+            transform: translateX(18px);
+          }
         `}
       </style>
 
@@ -700,6 +887,34 @@ const RecentJobs = () => {
           {toastMessage}
         </Toast.Body>
       </Toast>
+
+      {/* CHANGE 2: Modern Email Alert Toast - fully custom, separate from existing Bootstrap toast */}
+      {showEmailToast && (
+        <div className="email-toast-modern">
+          <div className="email-toast-glow-bar"></div>
+          <div className="email-toast-body-inner">
+            <button className="email-toast-close-btn" onClick={() => setShowEmailToast(false)}>✕</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div className="email-toast-icon-wrap">
+                <Mail size={20} color="#a78bfa" />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <div className="email-toast-title">Email Job Alerts</div>
+                  <span className="email-toast-badge">🚧 Coming Soon</span>
+                </div>
+                <div className="email-toast-subtitle">Notification preferences</div>
+              </div>
+            </div>
+            <div className="email-toast-desc">
+              We're building this feature! Soon you'll receive real-time job alerts directly in your inbox whenever new opportunities matching your profile are posted.
+            </div>
+            <div className="email-toast-progress">
+              <div className="email-toast-progress-fill"></div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div className="d-flex justify-content-between align-items-start mb-0">
@@ -758,6 +973,21 @@ const RecentJobs = () => {
       <div>
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h3 className="fw-bold mb-0" style={{ color: '#1e293b' }}>Direct Career Openings</h3>
+
+          {/* Email Alerts Toggle - top right of this section */}
+          <div
+            className="email-alerts-toggle"
+            onClick={handleEmailAlertsToggle}
+            title="Toggle Email Alerts"
+          >
+            <Mail size={16} color={emailAlerts ? "#6c5dff" : "#94a3b8"} />
+            <span className="email-alerts-label" style={{ color: emailAlerts ? "#6c5dff" : "#475569" }}>
+              Email Alerts
+            </span>
+            <div className={`toggle-switch ${emailAlerts ? 'on' : ''}`}>
+              <div className="toggle-knob"></div>
+            </div>
+          </div>
         </div>
 
         {!loading && (
@@ -812,20 +1042,25 @@ const RecentJobs = () => {
                         <div className="info-row"><span className="info-label">Degree:</span> {job.eligible_degree}</div>
                         <div className="info-row"><span className="info-label">Min CGPA:</span> {job.min_cgpa || "No criteria"}</div>
                         <div className="info-row"><span className="info-label">Batch:</span> {job.passout_year}</div>
-                        <div className="info-row"><span className="info-label">Deadline:</span> {job.expiry_date}</div>
+                        <div className="info-row"><span className="info-label">Deadline:</span> {job.expiry_date || "Open"}</div>
                         {job.eligible_branches && (
                           <div className="info-row"><span className="info-label">Branches:</span> {job.eligible_branches}</div>
                         )}
                       </div>
 
+                      {/* MODIFIED: Apply Now button is disabled/unclickable when job is already applied */}
                       <a
-                        href={isExpired ? "#" : job.apply_link}
-                        target={isExpired ? "" : "_blank"}
+                        href={isExpired || isApplied ? "#" : job.apply_link}
+                        target={isExpired || isApplied ? "" : "_blank"}
                         rel="noreferrer"
-                        className="apply-btn-primary"
-                        style={{ background: isExpired ? '#94a3b8' : '#6c5dff' }}
+                        className={`apply-btn-primary ${isExpired ? '' : isApplied ? 'btn-applied-disabled' : ''}`}
+                        style={{
+                          background: isExpired ? '#94a3b8' : isApplied ? '#94a3b8' : '#6c5dff'
+                        }}
+                        onClick={isApplied ? (e) => e.preventDefault() : undefined}
                       >
-                        {isExpired ? "Position Closed" : "Apply Now"} <ArrowRight size={16} />
+                        {isExpired ? "Position Closed" : isApplied ? "Already Applied" : "Apply Now"}
+                        <ArrowRight size={16} />
                       </a>
 
                       {/* MODIFIED: I Applied Checkbox - ONE TIME ONLY with ROUND tick */}
@@ -924,9 +1159,18 @@ const RecentJobs = () => {
                 <Form.Label className="form-label-prof">Target Batch</Form.Label>
                 <Form.Control className="form-control-prof" placeholder="2024, 2025" value={newJob.passout_year} onChange={e => setNewJob({ ...newJob, passout_year: e.target.value })} />
               </Col>
+              {/* CHANGE 1: Application Deadline is now mandatory - required attribute restored */}
               <Col md={6} className="mb-3">
-                <Form.Label className="form-label-prof">Application Deadline</Form.Label>
-                <Form.Control className="form-control-prof" type="date" required value={newJob.expiry_date} onChange={e => setNewJob({ ...newJob, expiry_date: e.target.value })} />
+                <Form.Label className="form-label-prof">
+                  Application Deadline <span style={{ color: '#ef4444' }}>*</span>
+                </Form.Label>
+                <Form.Control
+                  required
+                  className="form-control-prof"
+                  type="date"
+                  value={newJob.expiry_date}
+                  onChange={e => setNewJob({ ...newJob, expiry_date: e.target.value })}
+                />
               </Col>
               <Col md={12} className="mb-3">
                 <Form.Label className="form-label-prof">Direct Application URL</Form.Label>
