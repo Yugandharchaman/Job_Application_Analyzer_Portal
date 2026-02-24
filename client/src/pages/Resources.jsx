@@ -129,15 +129,6 @@ const Resources = () => {
       
       <div className="d-none d-md-flex gap-2 position-absolute top-0 end-0 mt-4 me-lg-5">
         <Button 
-          href="https://nodeflair.com/resume-checker" 
-          target="_blank"
-          variant="white"
-          className="shadow-sm border-0 rounded-pill px-3 py-2 d-flex align-items-center gap-2 compiler-btn"
-          style={{ fontSize: '13px', fontWeight: '700', color: '#412e89', border: '1px solid #ff475722' }}
-        >
-          <FileText size={16} /> Check Resume Score
-        </Button>
-        <Button 
           href="https://www.mployee.me/" 
           target="_blank"
           variant="white"

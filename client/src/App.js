@@ -97,7 +97,7 @@ function App() {
 
           {/* Protected Routes: If NOT logged in, sends user to /auth */}
           <Route path="/" element={<ProtectedRoute session={session}><Dashboard /></ProtectedRoute>} />
-          <Route path="/add-job" element={<ProtectedRoute session={session}><JobForm /></ProtectedRoute>} />
+          <Route path="/interview-Pro" element={<ProtectedRoute session={session}><JobForm /></ProtectedRoute>} />
           <Route path="/added-jobs" element={<ProtectedRoute session={session}><AddedJobs /></ProtectedRoute>} />
           <Route path="/calendar" element={<ProtectedRoute session={session}><CalendarPage /></ProtectedRoute>} />
           <Route path="/reminders" element={<ProtectedRoute session={session}><ReminderPage /></ProtectedRoute>} />

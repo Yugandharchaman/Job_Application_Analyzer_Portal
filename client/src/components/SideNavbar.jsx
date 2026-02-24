@@ -187,7 +187,7 @@ const SideNavbar = () => {
 
   const menu = [
     { name: "Dashboard", icon: <Home size={18} />, path: "/" },
-    { name: "Add Job", icon: <PlusSquare size={18} />, path: "/add-job" },
+    { name: "InterviewPro", icon: <PlusSquare size={18} />, path: "/interview-Pro" },
     { name: "Applied Jobs", icon: <Briefcase size={18} />, path: "/added-jobs" },
     { name: "Calendar", icon: <Calendar size={18} />, path: "/calendar" },
     { name: "Recent Jobs", icon: <Clock size={18} />, path: "/recent-jobs", hasNotification: true },
