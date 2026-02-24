@@ -17,7 +17,6 @@ import NetworkNode from "./pages/NetworkNode";
 import AuthPage from "./pages/AuthPage";
 import InterviewExperience from "./pages/InterviewExperience";
 import ResetPassword from "./pages/ResetPassword";
-import PWAInstallPrompt from "./components/PWAInstallPrompt"; // ← ADDED
 
 // --- PROTECTED ROUTE COMPONENT ---
 // Blocks access to Dashboard/Jobs if NOT logged in
@@ -69,7 +68,7 @@ function App() {
   return (
     <Router>
       {/* ← ADDED: PWA install banner — works on Android, iOS, Desktop */}
-      <PWAInstallPrompt />
+      
 
       {/* Sidebar only appears when a valid session exists */}
       {session && <SideNavbar />}
