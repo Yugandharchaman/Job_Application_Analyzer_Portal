@@ -139,7 +139,10 @@ const AddedJobs = () => {
   const filteredManualJobs = jobs.filter((job) => {
     const matchSearch = job.company.toLowerCase().includes(search.toLowerCase());
     const jobEntryDate = job.applieddate || job.appliedDate || job.date;
-    const matchDate = jobEntryDate === filterDate;
+    
+    // MODIFIED: If searching, ignore the date filter. Otherwise, match the date.
+    const matchDate = search.trim() !== "" ? true : jobEntryDate === filterDate;
+    
     return matchSearch && matchDate;
   });
 
@@ -150,7 +153,10 @@ const AddedJobs = () => {
     
     const matchSearch = job.company_name.toLowerCase().includes(search.toLowerCase());
     const jobEntryDate = item.created_at.split('T')[0]; // Get date from created_at
-    const matchDate = jobEntryDate === filterDate;
+    
+    // MODIFIED: If searching, ignore the date filter. Otherwise, match the date.
+    const matchDate = search.trim() !== "" ? true : jobEntryDate === filterDate;
+    
     return matchSearch && matchDate;
   });
 
@@ -176,6 +182,7 @@ const AddedJobs = () => {
   if (filterDate === todayStr) dateCardText = "Today";
   else if (filterDate === yesterdayStr) dateCardText = "Yesterday";
 
+  // MODIFIED: Count logic to show total found when searching, or date-count when not.
   const countForDate = allFilteredJobs.length;
 
   const indexOfLastJob = currentPage * jobsPerPage;
@@ -424,7 +431,9 @@ const AddedJobs = () => {
         {/* MODIFIED: Enhanced Today Badge Card */}
         <Col xs={12} sm={4} className="d-flex justify-content-center justify-content-sm-end">
           <Card className="text-center px-4 py-2 today-badge-card">
-            <h6 className="mb-1 small text-uppercase fw-bold opacity-75">{dateCardText}</h6>
+            <h6 className="mb-1 small text-uppercase fw-bold opacity-75">
+              {search.trim() !== "" ? "Found" : dateCardText}
+            </h6>
             <div className="d-flex align-items-center justify-content-center gap-2">
                 <span style={{ fontSize: '1.2rem', fontWeight: '800' }}>{countForDate}</span>
                 <Badge bg="light" text="dark" pill style={{ fontSize: '0.7rem' }}>Applications</Badge>
@@ -440,7 +449,10 @@ const AddedJobs = () => {
             placeholder="Search by company Name"
             style={{ borderRadius: "8px" }}
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1); // Reset page on search
+            }}
           />
         </Col>
         <Col xs={12} md={3} lg={2}>
@@ -453,6 +465,7 @@ const AddedJobs = () => {
               setFilterDate(e.target.value);
               setCurrentPage(1);
             }}
+            disabled={search.trim() !== ""} // Disable date picker while searching for clarity
           />
         </Col>
       </Row>
@@ -464,7 +477,7 @@ const AddedJobs = () => {
       ) : allFilteredJobs.length === 0 ? (
         <div className="text-center py-5 d-flex flex-column align-items-center">
           <img src={NoJobsImg} alt="No jobs" style={{ maxWidth: "100%", width: "400px", opacity: 0.8 }} />
-          <h5 className="mt-3 text-muted">No applications found for this selection.</h5>
+          <h5 className="mt-3 text-muted">No applications found for "{search || filterDate}".</h5>
         </div>
       ) : (
         <div className="pb-5">

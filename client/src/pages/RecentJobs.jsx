@@ -897,12 +897,40 @@ const RecentJobs = () => {
             transform: translateX(18px);
           }
 
-          /* ── Admin Modal responsive ── */
+          /* ── FIXED: Admin Modal — fully scrollable on all screens ── */
           .admin-modal-dialog {
             margin: 0.5rem auto;
           }
-          @media (max-width: 576px) {
+
+          /* Make modal height dynamic and scrollable on mobile */
+          @media (max-width: 767.98px) {
+            .admin-modal-dialog {
+              margin: 0 !important;
+              max-width: 100% !important;
+              width: 100% !important;
+              display: flex !important;
+              align-items: flex-end !important;
+            }
+            .admin-modal-dialog .modal-content {
+              border-radius: 24px 24px 0 0 !important;
+              max-height: 92vh !important;
+              display: flex !important;
+              flex-direction: column !important;
+            }
+            .admin-modal-dialog .modal-header {
+              flex-shrink: 0;
+              padding: 16px 20px 8px !important;
+              position: sticky;
+              top: 0;
+              background: #fff;
+              z-index: 10;
+              border-bottom: 1px solid #f1f5f9 !important;
+            }
+            /* ── THE KEY FIX: make modal body scrollable ── */
             .admin-modal-body {
+              overflow-y: auto !important;
+              -webkit-overflow-scrolling: touch !important;
+              flex: 1 1 auto !important;
               padding: 16px !important;
             }
             .admin-modal-body .form-control-prof {
@@ -917,6 +945,29 @@ const RecentJobs = () => {
             }
             .admin-modal-title {
               font-size: 1.1rem !important;
+            }
+            /* Submit button sticky at bottom */
+            .admin-submit-btn-wrap {
+              position: sticky;
+              bottom: 0;
+              background: #fff;
+              padding: 12px 0 4px;
+              margin-top: 8px;
+              z-index: 5;
+            }
+          }
+
+          /* Desktop: keep original behavior but cap height */
+          @media (min-width: 768px) {
+            .admin-modal-dialog .modal-content {
+              max-height: 90vh;
+              display: flex;
+              flex-direction: column;
+            }
+            .admin-modal-body {
+              overflow-y: auto !important;
+              flex: 1 1 auto;
+              padding: 24px !important;
             }
           }
 
@@ -1288,9 +1339,13 @@ const RecentJobs = () => {
                 <Form.Control className="form-control-prof" type="url" required placeholder="https://company.com/careers/..." value={newJob.apply_link} onChange={e => setNewJob({ ...newJob, apply_link: e.target.value })} />
               </Col>
             </Row>
-            <Button type="submit" disabled={isSubmitting} className="w-100 py-3 mt-3 shadow-sm border-0" style={{ background: '#6c5dff', borderRadius: '12px', fontWeight: 800 }}>
-              {isSubmitting ? "SYNCING DATA..." : "PUBLISH CAREER LISTING"}
-            </Button>
+
+            {/* Submit button wrapped for sticky behaviour on mobile */}
+            <div className="admin-submit-btn-wrap">
+              <Button type="submit" disabled={isSubmitting} className="w-100 py-3 shadow-sm border-0" style={{ background: '#6c5dff', borderRadius: '12px', fontWeight: 800 }}>
+                {isSubmitting ? "SYNCING DATA..." : "PUBLISH CAREER LISTING"}
+              </Button>
+            </div>
           </Form>
         </Modal.Body>
       </Modal>

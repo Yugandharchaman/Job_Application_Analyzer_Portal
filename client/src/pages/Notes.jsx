@@ -360,6 +360,14 @@ const Notes = () => {
           .action-icon:hover { opacity: 1 !important; transform: scale(1.2); }
           .skeleton-line { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: skeleton-loading 1.5s infinite; border-radius: 8px; }
           @keyframes skeleton-loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+          /* ── Mobile: tabs side by side ── */
+          @media (max-width: 767.98px) {
+            .custom-tabs.nav-tabs { display: flex !important; flex-wrap: nowrap !important; }
+            .custom-tabs.nav-tabs .nav-item { flex: 1 !important; }
+            .custom-tabs.nav-tabs .nav-link { width: 100% !important; text-align: center !important; margin-right: 4px !important; padding: 10px 8px !important; font-size: 13px !important; }
+            .custom-tabs.nav-tabs .nav-item:last-child .nav-link { margin-right: 0 !important; }
+          }
         `}
       </style>
     </Container>

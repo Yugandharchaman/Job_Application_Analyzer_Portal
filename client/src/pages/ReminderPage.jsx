@@ -230,12 +230,12 @@ const ReminderPage = () => {
         </section>
 
         <section>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
-            <h3 style={{ fontSize: "1.2rem", color: "#101341", display: "flex", alignItems: "center", gap: "10px", margin: 0 }}>
+          <div className="reminders-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
+            <h3 className="hide-on-mobile" style={{ fontSize: "1.2rem", color: "#101341", display: "flex", alignItems: "center", gap: "10px", margin: 0 }}>
               Reminders <span style={{ fontSize: "14px", color: "#666" }}>({filteredReminders.length})</span>
             </h3>
             
-            <div style={{ display: "flex", background: "#f0f0f0", padding: "4px", borderRadius: "12px", border: "1px solid #ddd" }}>
+            <div className="tabs-container" style={{ display: "flex", background: "#f0f0f0", padding: "4px", borderRadius: "12px", border: "1px solid #ddd" }}>
               <button 
                 onClick={() => setFilter("Ongoing")}
                 style={{ ...filterTabStyle, background: filter === "Ongoing" ? "#fff" : "transparent", color: filter === "Ongoing" ? "#6c5ddf" : "#666", boxShadow: filter === "Ongoing" ? "0 2px 8px rgba(0,0,0,0.1)" : "none" }}
@@ -330,6 +330,13 @@ const ReminderPage = () => {
           .reminder-list-entry {
             flex-wrap: wrap !important;
             gap: 10px !important;
+          }
+          /* Hide reminders text and center tabs on mobile */
+          .hide-on-mobile {
+            display: none !important;
+          }
+          .reminders-header {
+            justify-content: center !important;
           }
         }
 

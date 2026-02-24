@@ -23,6 +23,10 @@ const SideNavbar = () => {
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // ── Touch drag refs (finger swipe like ChatGPT) ──
+  const touchStartX = useRef(null);
+  const touchStartY = useRef(null);
+
   const [profile, setProfile] = useState({
     name: "",
     email: "",
@@ -63,6 +67,46 @@ const SideNavbar = () => {
       document.body.style.overflow = '';
     }
     return () => { document.body.style.overflow = ''; };
+  }, [isMobileMenuOpen]);
+
+  // ── Finger drag: swipe right from left edge → open | swipe left → close ──
+  useEffect(() => {
+    const handleTouchStart = (e) => {
+      touchStartX.current = e.touches[0].clientX;
+      touchStartY.current = e.touches[0].clientY;
+    };
+
+    const handleTouchEnd = (e) => {
+      if (touchStartX.current === null) return;
+      const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+      const deltaY = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
+
+      // Ignore if vertical scroll is dominant
+      if (Math.abs(deltaX) < 40 || deltaY > Math.abs(deltaX)) {
+        touchStartX.current = null;
+        return;
+      }
+
+      // Swipe right from left edge (within 50px) → open sidebar
+      if (deltaX > 40 && touchStartX.current < 50 && !isMobileMenuOpen) {
+        setIsMobileMenuOpen(true);
+      }
+
+      // Swipe left anywhere → close sidebar
+      if (deltaX < -40 && isMobileMenuOpen) {
+        setIsMobileMenuOpen(false);
+      }
+
+      touchStartX.current = null;
+    };
+
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
   }, [isMobileMenuOpen]);
 
   const fetchProfile = async () => {
