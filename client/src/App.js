@@ -67,9 +67,6 @@ function App() {
 
   return (
     <Router>
-      {/* ← ADDED: PWA install banner — works on Android, iOS, Desktop */}
-      
-
       {/* Sidebar only appears when a valid session exists */}
       {session && <SideNavbar />}
 
