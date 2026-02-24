@@ -55,6 +55,16 @@ const SideNavbar = () => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isMobileMenuOpen]);
+
   const fetchProfile = async () => {
     try {
       setLoadingProfile(true);
@@ -262,6 +272,10 @@ const SideNavbar = () => {
             70% { transform: scale(1.2) rotate(10deg); opacity: 1; }
             100% { transform: scale(1) rotate(0deg); opacity: 1; }
           }
+          @keyframes slideInLeft {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+          }
           .online-indicator {
             position: absolute; bottom: 2px; right: 2px; width: 13px; height: 13px;
             background-color: #28a745; border-radius: 50%; border: 2px solid rgba(6, 6, 26, 1);
@@ -279,54 +293,106 @@ const SideNavbar = () => {
           .resume-box { border: 2px dashed #e0e0e0; border-radius: 12px; padding: 15px; transition: 0.3s; }
           .success-animation { animation: success-pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; position: relative; }
           .notification-note { font-size: 11px; color: #6c757d; line-height: 1.3; margin-top: 15px; background: #f8f9fa; padding: 10px; border-radius: 10px; border-left: 3px solid #6c5dff; }
-          
-          .mobile-trigger-container {
-            display: none;
-            padding: 15px;
-          }
 
-          .mobile-trigger-btn {
-            background: rgba(6, 6, 26, 1);
-            border: none;
+          /* ── ChatGPT-style Global Hamburger ── */
+          .chatgpt-hamburger {
+            display: none;
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            z-index: 1060;
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            background: rgba(6, 6, 26, 0.92);
+            border: 1px solid rgba(255,255,255,0.12);
             color: #cfd3ff;
-            width: 45px;
-            height: 45px;
-            border-radius: 50%; 
-            display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+            transition: all 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
+          }
+          .chatgpt-hamburger:hover { background: rgba(108, 93, 255, 0.35); }
+          .chatgpt-hamburger:active { transform: scale(0.93); }
+
+          /* ── Mobile Overlay ── */
+          .chatgpt-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(4px);
+            z-index: 1045;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+          }
+          .chatgpt-overlay.active {
+            display: block;
+            opacity: 1;
           }
 
-          .mobile-overlay {
-            display: none;
+          /* ── Sidebar base (desktop) ── */
+          .app-sidebar {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(3px);
-            z-index: 1001;
+            min-height: 100vh;
+            width: 240px;
+            background-color: rgba(6, 6, 26, 1);
+            color: #cfd3ff;
+            z-index: 1050;
+            transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 16px;
+            padding-top: 28px;
+            border-top-right-radius: 25px;
+          }
+          .app-sidebar::-webkit-scrollbar { width: 3px; }
+          .app-sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+
+          /* ── Breakpoints ── */
+
+          /* Tablet portrait + small laptop */
+          @media (max-width: 1024px) {
+            .chatgpt-hamburger { display: flex; }
+            .app-sidebar {
+              transform: translateX(-100%);
+              width: 280px !important;
+              border-radius: 0 22px 22px 0 !important;
+              box-shadow: 10px 0 40px rgba(0,0,0,0.45);
+            }
+            .app-sidebar.mobile-open {
+              transform: translateX(0);
+            }
+            /* Hide original trigger from SideNavbar */
+            .mobile-trigger-container { display: none !important; }
           }
 
-          @media (max-width: 1024px) {
-            .mobile-trigger-container { display: flex; }
-            .sidebar {
-              transform: translateX(-100%);
-              transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
-              width: 280px !important;
-              border-radius: 0 25px 25px 0 !important;
-              box-shadow: 10px 0 30px rgba(0,0,0,0.3);
+          @media (max-width: 768px) {
+            .chatgpt-hamburger { top: 10px; left: 10px; width: 40px; height: 40px; }
+          }
+
+          @media (max-width: 480px) {
+            .chatgpt-hamburger { top: 8px; left: 8px; width: 38px; height: 38px; border-radius: 8px; }
+          }
+
+          /* Safe area (iPhone notch / Dynamic Island) */
+          @supports (padding: env(safe-area-inset-top)) {
+            .app-sidebar {
+              padding-top: calc(28px + env(safe-area-inset-top)) !important;
             }
-            .sidebar.mobile-open {
-              transform: translateX(0);
-              z-index: 1050 !important;
+            .chatgpt-hamburger {
+              top: calc(10px + env(safe-area-inset-top)) !important;
             }
-            .mobile-overlay.active {
-              display: block;
-            }
+          }
+
+          /* Profile modal responsive */
+          @media (max-width: 768px) {
             .profile-modal-content .border-end {
               border-right: none !important;
               border-bottom: 1px solid #eee;
@@ -334,7 +400,6 @@ const SideNavbar = () => {
               margin-bottom: 20px;
             }
           }
-
           @media (max-width: 576px) {
             .profile-modal-content { border-radius: 15px; margin: 10px; }
             .modal-dialog { margin: 0.5rem; }
@@ -342,40 +407,44 @@ const SideNavbar = () => {
             .resume-box { flex-direction: column; text-align: center; }
             .resume-box .d-flex { justify-content: center; }
           }
-
-          @supports (padding: env(safe-area-inset-top)) {
-            .sidebar {
-              padding-top: calc(20px + env(safe-area-inset-top)) !important;
-            }
-          }
         `}
       </style>
 
-      {/* NON-FIXED ROUNDED MOBILE TRIGGER */}
-      <div className="mobile-trigger-container d-lg-none">
-        <button className="mobile-trigger-btn" onClick={() => setIsMobileMenuOpen(true)}>
-          <Menu size={22} />
-        </button>
-      </div>
-
-      {/* OVERLAY */}
-      <div className={`mobile-overlay ${isMobileMenuOpen ? 'active' : ''}`} onClick={() => setIsMobileMenuOpen(false)} />
-
-      <div
-        className={`sidebar d-flex flex-column ${isMobileMenuOpen ? 'mobile-open' : ''}`}
-        style={{
-          minHeight: "100vh", width: "240px", position: "fixed", left: 0, top: 0,
-          padding: "20px 16px", paddingTop: "28px", borderTopRightRadius: "25px",
-          backgroundColor: "rgba(6, 6, 26, 1)", color: "#cfd3ff", zIndex: 1000,
-          overflowY: 'auto'
-        }}
+      {/* ── ChatGPT-Style Fixed Hamburger (shows on ≤1024px) ── */}
+      <button
+        className="chatgpt-hamburger"
+        onClick={() => setIsMobileMenuOpen(true)}
+        aria-label="Open navigation menu"
       >
-        <div className="d-lg-none text-end mb-3">
-           <button onClick={() => setIsMobileMenuOpen(false)} style={{ background: 'none', border: 'none', color: '#6c5dff' }}>
-             <X size={26} />
-           </button>
+        <Menu size={20} />
+      </button>
+
+      {/* ── Global Backdrop Overlay ── */}
+      <div
+        className={`chatgpt-overlay ${isMobileMenuOpen ? 'active' : ''}`}
+        onClick={() => setIsMobileMenuOpen(false)}
+      />
+
+      {/* ── Main Sidebar ── */}
+      <div
+        className={`app-sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}
+      >
+        {/* Close button inside sidebar (mobile only) */}
+        <div className="d-lg-none text-end mb-2" style={{ marginTop: '-8px' }}>
+          <button
+            onClick={() => setIsMobileMenuOpen(false)}
+            style={{
+              background: 'none', border: 'none', color: '#6c5dff',
+              padding: '4px', cursor: 'pointer', borderRadius: '8px',
+              display: 'inline-flex', alignItems: 'center'
+            }}
+            aria-label="Close menu"
+          >
+            <X size={22} />
+          </button>
         </div>
 
+        {/* Profile Avatar */}
         <div 
           className="profile-trigger d-flex justify-content-center align-items-center"
           onClick={() => {
@@ -400,6 +469,7 @@ const SideNavbar = () => {
           </div>
         </div>
 
+        {/* Profile Modal */}
         <Modal show={showProfile} onHide={() => setShowProfile(false)} centered size="lg" contentClassName="profile-modal-content">
           <Modal.Header closeButton className="border-0 px-4 pt-4"></Modal.Header>
           <Modal.Body className="px-3 px-md-4 pb-5">
@@ -536,11 +606,13 @@ const SideNavbar = () => {
           </Modal.Body>
         </Modal>
 
+        {/* Nav Menu */}
         <Nav className="flex-column gap-1 flex-grow-1">
           {menu.map((item, index) => {
             const isActive = location.pathname === item.path;
             return (
               <Nav.Link as={Link} to={item.path} key={index}
+                onClick={() => setIsMobileMenuOpen(false)}
                 style={{
                   display: "flex", alignItems: "center", gap: "12px", padding: "11px 14px", borderRadius: "12px",
                   color: isActive ? "#d6c7ff" : "#b6bbff",
@@ -559,6 +631,7 @@ const SideNavbar = () => {
           })}
         </Nav>
 
+        {/* Logout */}
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "14px", marginTop: "14px" }}>
           <button style={{ display: "flex", alignItems: "center", gap: "12px", padding: "11px 14px", borderRadius: "12px", color: "#ff6b6b", background: "transparent", border: "none", width: "100%", textAlign: "left", fontSize: "14.5px", cursor: "pointer", transition: "all 0.25s" }}
             onClick={handleLogout}>

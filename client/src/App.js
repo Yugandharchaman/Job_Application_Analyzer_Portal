@@ -71,9 +71,11 @@ function App() {
       {session && <SideNavbar />}
 
       <div
-        className="page-content"
+        className={`page-content ${session ? 'page-content--authed' : ''}`}
         style={{
           // Margin adjusts automatically based on login status
+          // On desktop: 240px sidebar. On mobile (≤1024px): 0 (sidebar is off-canvas).
+          // The responsive.css handles the breakpoint overrides.
           marginLeft: session ? "240px" : "0px", 
           padding: session ? "24px" : "0px",
           minHeight: "100vh",

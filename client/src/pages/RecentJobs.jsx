@@ -359,12 +359,12 @@ const RecentJobs = () => {
 
   return (
     <div style={{
-      marginLeft: "50px",
-      padding: "40px 20px",
-      background: "#f8f9fc",
-      minHeight: "100vh",
-      width: "calc(100% - 80px)",
-    }}>
+  marginLeft: "50px",
+  padding: "40px 20px",
+  background: "#f8f9fc",
+  minHeight: "100vh",
+  width: "calc(100% - 80px)",
+}}>
       <style>
         {`
           .system-loader-container { padding: 40px 0; display: flex; flex-direction: column; align-items: center; }

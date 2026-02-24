@@ -147,7 +147,7 @@ const ReminderPage = () => {
   );
 
   return (
-    <div style={{ padding: "40px", color: "white", maxWidth: "1200px", margin: "auto", position: "relative" }}>
+    <div className="reminder-page-wrapper" style={{ padding: "40px", color: "white", maxWidth: "1200px", margin: "auto", position: "relative" }}>
       <Toaster position="top-right" reverseOrder={false} />
 
       {loading && (
@@ -156,7 +156,7 @@ const ReminderPage = () => {
         </div>
       )}
       
-      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1.8fr", gap: "50px", opacity: loading ? 0.4 : 1, transition: "opacity 0.3s ease" }}>
+      <div className="reminder-grid" style={{ display: "grid", gridTemplateColumns: "1.2fr 1.8fr", gap: "50px", opacity: loading ? 0.4 : 1, transition: "opacity 0.3s ease" }}>
         
         <section>
           <div style={cardStyle}>
@@ -230,7 +230,7 @@ const ReminderPage = () => {
         </section>
 
         <section>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
             <h3 style={{ fontSize: "1.2rem", color: "#101341", display: "flex", alignItems: "center", gap: "10px", margin: 0 }}>
               Reminders <span style={{ fontSize: "14px", color: "#666" }}>({filteredReminders.length})</span>
             </h3>
@@ -252,7 +252,7 @@ const ReminderPage = () => {
           </div>
           <hr style={hrStyle} />
 
-          <div style={{ height: "550px", overflowY: "auto", paddingRight: "10px" }}>
+          <div className="reminder-list-scroll" style={{ height: "550px", overflowY: "auto", paddingRight: "10px" }}>
             {filteredReminders.length === 0 ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", color: "#888", textAlign: "center" }}>
                 <AlertCircle size={48} color="#ddd" style={{ marginBottom: "15px" }} />
@@ -266,13 +266,13 @@ const ReminderPage = () => {
                   const isExpired = status === "Expired";
                   
                   return (
-                    <div key={index} style={listEntryStyle}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-                        <div style={{ ...iconBoxStyle, background: isExpired ? "#f8f8f8" : "rgba(108, 93, 255, 0.08)" }}>
+                    <div key={index} className="reminder-list-entry" style={listEntryStyle}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "15px", flex: 1, minWidth: 0 }}>
+                        <div style={{ ...iconBoxStyle, background: isExpired ? "#f8f8f8" : "rgba(108, 93, 255, 0.08)", flexShrink: 0 }}>
                           <Clock size={18} color={isExpired ? "#999" : "#6c5ddf"} />
                         </div>
-                        <div>
-                          <div style={{ fontWeight: "700", fontSize: "15px", color: isExpired ? "#888" : "#1a1a1a" }}>{r.name}</div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: "700", fontSize: "15px", color: isExpired ? "#888" : "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</div>
                           <div style={{ fontSize: "13px", color: "#666", marginTop: "2px" }}>
                             {new Date(r.dateTime).toDateString()} • <span style={{color: "#333", fontWeight: "600"}}>{format12Hour(r.dateTime)}</span>
                           </div>
@@ -287,7 +287,8 @@ const ReminderPage = () => {
                         color: isExpired ? "#999" : "#6c5ddf", 
                         background: isExpired ? "#f0f0f0" : "rgba(108,93,255,0.1)", 
                         padding: "6px 14px", 
-                        borderRadius: "30px"
+                        borderRadius: "30px",
+                        flexShrink: 0
                       }}>
                         {status}
                       </div>
@@ -299,6 +300,65 @@ const ReminderPage = () => {
           </div>
         </section>
       </div>
+
+      <style>{`
+        /* ── RESPONSIVE ADDITIONS FOR REMINDER PAGE ── */
+        .reminder-page-wrapper {
+          box-sizing: border-box;
+        }
+
+        @media (max-width: 1024px) {
+          .reminder-page-wrapper {
+            padding: 70px 20px 24px !important;
+          }
+          .reminder-grid {
+            grid-template-columns: 1fr !important;
+            gap: 28px !important;
+          }
+          .reminder-list-scroll {
+            height: 420px !important;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .reminder-page-wrapper {
+            padding: 68px 14px 20px !important;
+          }
+          .reminder-list-scroll {
+            height: 380px !important;
+          }
+          .reminder-list-entry {
+            flex-wrap: wrap !important;
+            gap: 10px !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .reminder-page-wrapper {
+            padding: 64px 10px 16px !important;
+          }
+          .reminder-list-scroll {
+            height: auto !important;
+            max-height: 320px !important;
+          }
+          .reminder-list-entry {
+            padding: 14px 16px !important;
+            border-radius: 14px !important;
+          }
+          input[type="text"],
+          input[type="email"],
+          input[type="date"],
+          input[type="time"] {
+            font-size: 16px !important;
+          }
+        }
+
+        @media (max-width: 375px) {
+          .reminder-page-wrapper {
+            padding: 60px 8px 14px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
@@ -310,11 +370,11 @@ const styles = {
 const loaderOverlayStyle = { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(255, 255, 255, 0.6)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 10, borderRadius: "28px" };
 const cardStyle = { background: "#fff", padding: "35px", borderRadius: "28px", border: "1px solid #eef0f2", boxShadow: "0 20px 40px rgba(0,0,0,0.05)" };
 const labelStyle = { display: "flex", alignItems: "center", marginBottom: "10px", fontSize: "13px", color: "#4a5568", fontWeight: "700" };
-const inputStyle = { width: "100%", padding: "14px", borderRadius: "12px", border: "2px solid #edf2f7", background: "#f7fafc", color: "#2d3748", outline: "none", fontSize: "14px", transition: "border-color 0.2s" };
-const buttonStyle = { marginTop: "15px", padding: "16px", borderRadius: "14px", color: "#fff", border: "none", fontWeight: "700", cursor: "pointer", transition: "0.3s all ease", fontSize: "16px" };
+const inputStyle = { width: "100%", padding: "14px", borderRadius: "12px", border: "2px solid #edf2f7", background: "#f7fafc", color: "#2d3748", outline: "none", fontSize: "14px", transition: "border-color 0.2s", boxSizing: "border-box" };
+const buttonStyle = { marginTop: "15px", padding: "16px", borderRadius: "14px", color: "#fff", border: "none", fontWeight: "700", cursor: "pointer", transition: "0.3s all ease", fontSize: "16px", width: "100%" };
 const filterTabStyle = { border: "none", padding: "8px 20px", borderRadius: "10px", fontSize: "13px", fontWeight: "700", cursor: "pointer", transition: "0.3s all" };
 const noteStyle = { marginTop: "30px", padding: "18px", background: "#f8faff", borderRadius: "16px", borderLeft: "5px solid #6c5ddf", fontSize: "13px", color: "#4a5568", display: "flex", gap: "12px", lineHeight: "1.6" };
-const listEntryStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 22px", background: "#fff", borderRadius: "20px", border: "1px solid #f0f0f0", boxShadow: "0 4px 6px rgba(0,0,0,0.02)" };
+const listEntryStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 22px", background: "#fff", borderRadius: "20px", border: "1px solid #f0f0f0", boxShadow: "0 4px 6px rgba(0,0,0,0.02)", gap: "12px" };
 const iconBoxStyle = { padding: "12px", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center" };
 const hrStyle = { border: "none", height: "1px", background: "linear-gradient(90deg, #e2e8f0 0%, rgba(226,232,240,0) 100%)", marginBottom: "25px" };
 
