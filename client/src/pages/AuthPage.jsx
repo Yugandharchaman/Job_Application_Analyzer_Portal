@@ -76,7 +76,7 @@ const AuthPage = () => {
         toast.error(error.message, { id: loadingToast });
       } else {
         toast.success("Access Granted. Welcome back.", { id: loadingToast });
-        navigate("/dashboard"); 
+        navigate("/"); 
       }
     } else {
       const fullName = nameRef.current?.value;
