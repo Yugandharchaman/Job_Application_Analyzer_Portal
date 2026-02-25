@@ -41,10 +41,23 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // FIX: Add a maximum wait of 4 seconds for mobile devices where
+    // Supabase session resolution can be slow on first load.
+    // This prevents the infinite loading screen on mobile deployments.
+    const mobileTimeout = setTimeout(() => {
+      setLoading(false);
+    }, 4000);
+
     // 1. Initial Session Check
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
+      clearTimeout(mobileTimeout); // Clear timeout if session resolved normally
+    }).catch(() => {
+      // FIX: If getSession fails (network error on mobile), stop loading
+      // instead of hanging forever. User will see the auth page.
+      setLoading(false);
+      clearTimeout(mobileTimeout);
     });
 
     // 2. Listen for Auth Changes (Login, Logout, Session Expired)
@@ -53,7 +66,10 @@ function App() {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(mobileTimeout);
+    };
   }, []);
 
   // Show nothing (or a spinner) while checking if user is logged in
