@@ -241,8 +241,7 @@ const SideNavbar = () => {
 
   const menu = [
     { name: "Dashboard", icon: <Home size={18} />, path: "/" },
-    { name: "InterviewPro", icon: <PlusSquare size={18} />, path: "/interview-Pro" },
-    { name: "Applied Jobs", icon: <Briefcase size={18} />, path: "/added-jobs" },
+    { name: "ThinkDaily+", icon: <PlusSquare size={18} />, path: "/interview-Pro" },
     { name: "Calendar", icon: <Calendar size={18} />, path: "/calendar" },
     { name: "Recent Jobs", icon: <Clock size={18} />, path: "/recent-jobs", hasNotification: true },
     { name: "Interview XP", icon: <MessageCircle size={18} />, path: "/interview-experience" },
