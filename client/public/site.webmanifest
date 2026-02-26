@@ -38,7 +38,7 @@
   "display": "standalone",
   "orientation": "portrait-primary",
   "theme_color": "#6c5ddf",
-  "background_color": "#f8faff",
+  "background_color": "#0a0a0f",
   "categories": ["productivity", "utilities"],
   "shortcuts": [
     {
