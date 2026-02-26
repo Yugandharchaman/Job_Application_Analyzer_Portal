@@ -5,8 +5,17 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
 
+  <!-- Force dark background immediately before React loads -->
+  <style>
+    html, body, #root {
+      background-color: #0a0a0f !important;
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+
   <!-- PWA Theme & Description -->
-  <meta name="theme-color" content="#6c5ddf" />
+  <meta name="theme-color" content="#0a0a0f" />
   <meta name="description" content="Personal reflections and company-specific interview insights." />
   <meta name="application-name" content="Job Analyzer Platform" />
 
@@ -16,7 +25,7 @@
   <meta name="apple-mobile-web-app-title" content="JobVault" />
 
   <!-- Microsoft Tiles (Windows PWA) -->
-  <meta name="msapplication-TileColor" content="#6c5ddf" />
+  <meta name="msapplication-TileColor" content="#0a0a0f" />
   <meta name="msapplication-TileImage" content="%PUBLIC_URL%/favicon.ico" />
   <meta name="msapplication-tap-highlight" content="no" />
 
@@ -24,7 +33,7 @@
   <meta property="og:title" content="Job Analyzer Platform" />
   <meta property="og:description" content="Track your job applications, interview experiences, and career progress." />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="%PUBLIC_URL%/favicon.ico" />
+  <meta property="og:image" content="%PUBLIC_URL%/android-chrome-512x512.png" />
 
   <!-- Icons -->
   <link rel="apple-touch-icon" sizes="180x180" href="%PUBLIC_URL%/apple-touch-icon.png" />
