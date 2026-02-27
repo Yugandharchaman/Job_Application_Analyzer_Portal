@@ -48,20 +48,18 @@ const CalendarPage = () => {
   const [loading, setLoading] = useState(true);
   const [showStreakModal, setShowStreakModal] = useState(false);
   const [streakCount, setStreakCount] = useState(0);
-  const [currentUser, setCurrentUser] = useState(null); // NEW: Track current user
+  const [currentUser, setCurrentUser] = useState(null);
 
-  // MODIFIED: Wrapped in useCallback to fix dependency error
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return setLoading(false);
 
-      setCurrentUser(user); // NEW: Store current user
+      setCurrentUser(user);
 
       const todayStr = today.toLocaleDateString('en-CA'); 
 
-      // NEW: Fetch manual job applications
       const { data: manualEntries, error: manualError } = await supabase
         .from(STORAGE_KEY)
         .select("applieddate") 
@@ -69,7 +67,6 @@ const CalendarPage = () => {
       
       if (manualError) throw manualError;
 
-      // NEW: Fetch platform job applications (from job_applications_status)
       const { data: platformEntries, error: platformError } = await supabase
         .from('job_applications_status')
         .select("created_at")
@@ -78,20 +75,17 @@ const CalendarPage = () => {
 
       if (platformError) throw platformError;
 
-      // NEW: Combine both sources and mark days as streak
       const historyMap = {};
       
-      // Add manual applications
       if (manualEntries) {
         manualEntries.forEach(entry => {
           historyMap[entry.applieddate] = "streak";
         });
       }
 
-      // Add platform applications (extract date from created_at timestamp)
       if (platformEntries) {
         platformEntries.forEach(entry => {
-          const dateKey = entry.created_at.split('T')[0]; // Extract YYYY-MM-DD
+          const dateKey = entry.created_at.split('T')[0];
           historyMap[dateKey] = "streak";
         });
       }
@@ -99,6 +93,14 @@ const CalendarPage = () => {
       let currentStreak = 0;
       let checkDate = new Date(today);
       
+      // ── FIX: If today has no application yet, start streak check from yesterday.
+      //    This way an active streak from previous days isn't broken just because
+      //    the user hasn't applied yet today (they still have until midnight).
+      const todayKey = today.toLocaleDateString('en-CA');
+      if (!historyMap[todayKey]) {
+        checkDate.setDate(checkDate.getDate() - 1);
+      }
+
       while (true) {
         const key = checkDate.toLocaleDateString('en-CA');
         if (historyMap[key] === "streak") {
@@ -128,12 +130,10 @@ const CalendarPage = () => {
     }
   }, [today]);
 
-  // MODIFIED: Added fetchData to dependencies
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // NEW: Real-time subscription for manual job applications
   useEffect(() => {
     if (!currentUser) return;
 
@@ -147,19 +147,13 @@ const CalendarPage = () => {
           table: 'job_applications',
           filter: `user_id=eq.${currentUser.id}`
         },
-        (payload) => {
-          // Refetch data when manual job is added/updated
-          fetchData();
-        }
+        () => { fetchData(); }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(manualJobsChannel);
-    };
+    return () => { supabase.removeChannel(manualJobsChannel); };
   }, [currentUser, fetchData]);
 
-  // NEW: Real-time subscription for platform job applications
   useEffect(() => {
     if (!currentUser) return;
 
@@ -173,16 +167,11 @@ const CalendarPage = () => {
           table: 'job_applications_status',
           filter: `user_id=eq.${currentUser.id}`
         },
-        (payload) => {
-          // Refetch data when platform job is marked as applied
-          fetchData();
-        }
+        () => { fetchData(); }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(platformJobsChannel);
-    };
+    return () => { supabase.removeChannel(platformJobsChannel); };
   }, [currentUser, fetchData]);
 
   const monthOptions = useMemo(() => {
@@ -214,10 +203,11 @@ const CalendarPage = () => {
     
     for (let d = 1; d <= daysInMonth; d++) {
       const date = new Date(year, month, d);
-      if (date > today) continue;
+      // ── FIX: Skip today and future days — today is still in progress ──
+      if (date >= today) continue;
       const key = date.toLocaleDateString('en-CA');
       if (activity[key] === "streak") applied++;
-      else if (date < today) missed++;
+      else missed++; // Only count missed for PAST days (strictly before today)
     }
     
     const totalDaysCounted = (applied + missed) || 1; 
@@ -250,7 +240,6 @@ const CalendarPage = () => {
           .missed-strike { position: absolute; inset: 0; border: 2px solid ${THEME.missed}; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
           .missed-strike::before { content: ''; position: absolute; width: 100%; height: 2px; background: ${THEME.missed}; transform: rotate(-45deg); }
           
-          /* FIX: Ensure container is relative so children absolute positioning works */
           .trophy-container { 
             display: flex; 
             justify-content: space-between; 
@@ -265,7 +254,6 @@ const CalendarPage = () => {
             z-index: 1;
           }
           
-          /* FIX: Higher z-index to stay above container background */
           .progression-line { 
             position: absolute; 
             top: 50%; 
@@ -306,7 +294,6 @@ const CalendarPage = () => {
             100% { transform: translateX(100%); }
           }
 
-          /* FIX: Trophies must be highest layer to stay on top of the bar */
           .trophy-card { z-index: 3; position: relative; min-width: 85px; padding: 12px 8px; border-radius: 20px !important; text-align: center; background: white; border: 2px solid #f1f5f9; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
           .trophy-unlocked { border: 2px solid; transform: translateY(-8px); box-shadow: 0 15px 25px -5px rgba(0,0,0,0.1); }
        `}</style>
@@ -392,18 +379,33 @@ const CalendarPage = () => {
                 {["S", "M", "T", "W", "T", "F", "S"].map(d => <div key={d} style={styles.weekDay}>{d}</div>)}
                 {Array.from({length: new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay()}).map((_, i) => <div key={`empty-${i}`} />)}
                 {Array.from({length: new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate()}).map((_, i) => {
-                  const day = i + 1; const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                  const day = i + 1;
+                  const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
                   const key = date.toLocaleDateString('en-CA'); 
                   const status = activity[key];
                   const isFuture = date > today; 
                   const isToday = date.getTime() === today.getTime();
-                  const isMissed = !isFuture && !status;
+                  // ── FIX: Only mark as missed if STRICTLY in the past (before today)
+                  //    Today is still in progress — never mark it missed until midnight ──
+                  const isPast = date < today;
+                  const isMissed = isPast && !status;
 
                   return (
                     <div key={day} className={`day-box-hover ${isToday ? 'today-pulse' : ''}`} style={{
-                      ...styles.dayBox, background: status === 'streak' ? `linear-gradient(135deg, ${THEME.applied}, #059669)` : 'transparent',
-                      color: (status) ? '#fff' : isMissed ? THEME.missed : '#64748b', border: isToday ? `2px solid ${currentBadge.color}` : '1px solid #f1f5f9', opacity: isFuture ? 0.3 : 1,
-                    }}>{day}{isMissed && <div className="missed-strike" />}</div>
+                      ...styles.dayBox,
+                      background: status === 'streak'
+                        ? `linear-gradient(135deg, ${THEME.applied}, #059669)`
+                        : 'transparent',
+                      color: status ? '#fff' : isMissed ? THEME.missed : '#64748b',
+                      border: isToday
+                        ? `2px solid ${currentBadge.color}`
+                        : '1px solid #f1f5f9',
+                      opacity: isFuture ? 0.3 : 1,
+                    }}>
+                      {day}
+                      {/* Only show the missed X strike on past days, never today */}
+                      {isMissed && <div className="missed-strike" />}
+                    </div>
                   );
                 })}
               </div>
