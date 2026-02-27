@@ -479,14 +479,21 @@ const SideNavbar = () => {
             right: 0;
             height: 64px;
             background: rgba(6, 6, 26, 0.97);
-            border-top: 1px solid rgba(108,93,255,0.25);
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            border-top: 1px solid rgba(108,93,255,0.28);
+            border-left: 1px solid rgba(108,93,255,0.28);
+            border-right: 1px solid rgba(108,93,255,0.28);
+            border-bottom: none;
             z-index: 1040;
             align-items: center;
             justify-content: space-around;
             padding: 0 4px;
             animation: bottomNavIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
-            backdrop-filter: blur(12px);
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 -4px 24px rgba(0,0,0,0.4), 0 -1px 12px rgba(108,93,255,0.12);
           }
           .bottom-nav-item {
             display: flex;

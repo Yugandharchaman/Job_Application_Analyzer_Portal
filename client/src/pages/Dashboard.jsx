@@ -610,6 +610,7 @@ const Dashboard = () => {
             animation: tag-glow 1.5s infinite alternate;
           }
 
+          /* ── Admin FAB: desktop default position ── */
           .admin-fab-container {
             position: fixed;
             bottom: 30px;
@@ -619,6 +620,19 @@ const Dashboard = () => {
             flex-direction: column;
             align-items: flex-end;
             gap: 15px;
+          }
+
+          @media (max-width: 1024px) {
+            .admin-fab-container {
+              bottom: 82px;
+            }
+          }
+
+          /* ── On mobile (≤1024px), raise FAB above the bottom nav bar (64px) + extra gap ── */
+          @media (max-width: 1024px) {
+            .admin-fab-container {
+              bottom: 82px;
+            }
           }
 
           .admin-menu {
