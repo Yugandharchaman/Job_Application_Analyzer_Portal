@@ -6,7 +6,7 @@ import toast from "react-hot-toast";
 import {
   Home, PlusSquare, Briefcase, Clock, Calendar, Bell, XCircle, FileText,
   LogOut, Target, Book, User, MessageCircle,
-  Edit3, Save, Camera, Upload, Download, File, Info, Menu, X
+  Edit3, Save, Camera, Upload, Download, File, Info, Menu, X, Rss, Search
 } from "react-feather";
 
 const SideNavbar = () => {
@@ -239,17 +239,29 @@ const SideNavbar = () => {
     }
   };
 
+  // Sidebar menu — items with hideOnMobile are shown only on desktop (they appear in bottom nav on mobile)
   const menu = [
-    { name: "Dashboard", icon: <Home size={18} />, path: "/" },
-    { name: "ThinkDaily+", icon: <PlusSquare size={18} />, path: "/interview-Pro" },
+    { name: "Dashboard", icon: <Home size={18} />, path: "/", hideOnMobile: true },
+    { name: "ThinkDaily+", icon: null, isBrain: true, path: "/interview-Pro", hideOnMobile: true },
     { name: "Calendar", icon: <Calendar size={18} />, path: "/calendar" },
-    { name: "Recent Jobs", icon: <Clock size={18} />, path: "/recent-jobs", hasNotification: true },
-    { name: "Interview XP", icon: <MessageCircle size={18} />, path: "/interview-experience" },
+    { name: "Recent Jobs", icon: <Clock size={18} />, path: "/recent-jobs", hasNotification: true, hideOnMobile: true },
+    { name: "Interview XP", icon: <MessageCircle size={18} />, path: "/interview-experience", hideOnMobile: true },
     { name: "Reminders", icon: <Bell size={18} />, path: "/reminders" },
     { name: "Notes", icon: <FileText size={18} />, path: "/notes" },
     { name: "Rejections", icon: <XCircle size={18} style={{color: "red"}} />, path: "/rejections" },
     { name: "Resources", icon: <Book size={18} />, path: "/resources" },
+    { name: "AI Resume Analyzer", icon: <Search size={18} />, path: "/resume-analyzer" },
+    { name: "Daily News", icon: <Rss size={18} />, path: "/daily-news", hideOnMobile: true },
     { name: "Connect with Me", icon: <Target size={18} />, path: "/connect" }
+  ];
+
+  // Bottom nav: Home, ThinkDaily+(brain), Interview XP, Daily News, Recent Jobs
+  const bottomNavItems = [
+    { name: "Home", icon: <Home size={20} />, path: "/" },
+    { name: "ThinkDaily+", isBrain: true, path: "/interview-Pro" },
+    { name: "Interview XP", icon: <MessageCircle size={20} />, path: "/interview-experience" },
+    { name: "Daily News", icon: <Rss size={20} />, path: "/daily-news" },
+    { name: "Recent Jobs", icon: <Clock size={20} />, path: "/recent-jobs", hasNotification: true },
   ];
 
   const handleImageChange = (e) => {
@@ -296,6 +308,28 @@ const SideNavbar = () => {
     toast("Editing Enabled", { icon: "✍️", style: { borderRadius: '10px', background: '#333', color: '#fff' } });
   };
 
+  // Animated Brain SVG Icon component
+  const BrainIcon = ({ size = 18 }) => (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="brain-icon-svg"
+    >
+      <path d="M9.5 2a2.5 2.5 0 0 1 2.45 2H12a2.5 2.5 0 0 1 4.95.5A2.49 2.49 0 0 1 18 7v.5A2.5 2.5 0 0 1 20 10v4a2.5 2.5 0 0 1-2 2.45V17a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3v-.55A2.5 2.5 0 0 1 4 14v-4a2.5 2.5 0 0 1 2-2.45V7a2.5 2.5 0 0 1 2.5-2.5"/>
+      <path d="M12 4.5v15"/>
+      <path d="M8 8.5c1 0 2-.5 2-1.5"/>
+      <path d="M16 8.5c-1 0-2-.5-2-1.5"/>
+      <path d="M8 12.5c1 0 2 .5 2 1.5"/>
+      <path d="M16 12.5c-1 0-2 .5-2 1.5"/>
+    </svg>
+  );
+
   return (
     <>
       <style>
@@ -319,6 +353,21 @@ const SideNavbar = () => {
             from { transform: translateX(-100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
           }
+          @keyframes brainPulse {
+            0% { filter: drop-shadow(0 0 0px rgba(180,140,255,0)); transform: scale(1); }
+            40% { filter: drop-shadow(0 0 6px rgba(180,140,255,0.9)); transform: scale(1.18); }
+            100% { filter: drop-shadow(0 0 0px rgba(180,140,255,0)); transform: scale(1); }
+          }
+          @keyframes brainPulseMobile {
+            0% { filter: drop-shadow(0 0 0px rgba(180,140,255,0)); transform: scale(1); }
+            40% { filter: drop-shadow(0 0 8px rgba(180,140,255,1)); transform: scale(1.22); }
+            100% { filter: drop-shadow(0 0 0px rgba(180,140,255,0)); transform: scale(1); }
+          }
+          @keyframes bottomNavIn {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+          }
+
           .online-indicator {
             position: absolute; bottom: 2px; right: 2px; width: 13px; height: 13px;
             background-color: #28a745; border-radius: 50%; border: 2px solid rgba(6, 6, 26, 1);
@@ -337,28 +386,36 @@ const SideNavbar = () => {
           .success-animation { animation: success-pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; position: relative; }
           .notification-note { font-size: 11px; color: #6c757d; line-height: 1.3; margin-top: 15px; background: #f8f9fa; padding: 10px; border-radius: 10px; border-left: 3px solid #6c5dff; }
 
-          /* ── ChatGPT-style Global Hamburger ── */
+          .brain-icon-svg {
+            animation: brainPulse 2.8s ease-in-out infinite;
+          }
+          .brain-icon-svg-mobile {
+            animation: brainPulseMobile 2.2s ease-in-out infinite;
+          }
+
+          /* ── Hamburger: same dark navbar color, circular, NO animations, hidden when sidebar open ── */
           .chatgpt-hamburger {
             display: none;
             position: fixed;
             top: 12px;
             left: 12px;
             z-index: 1060;
-            width: 42px;
-            height: 42px;
-            border-radius: 10px;
-            background: rgba(6, 6, 26, 0.92);
-            border: 1px solid rgba(255,255,255,0.12);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(6, 6, 26, 1);
+            border: 1.5px solid rgba(108, 93, 255, 0.5);
             color: #cfd3ff;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-            transition: all 0.2s ease;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
             -webkit-tap-highlight-color: transparent;
           }
-          .chatgpt-hamburger:hover { background: rgba(108, 93, 255, 0.35); }
-          .chatgpt-hamburger:active { transform: scale(0.93); }
+          /* Hide hamburger completely when sidebar is open */
+          .chatgpt-hamburger.is-open {
+            display: none !important;
+          }
 
           /* ── Mobile Overlay ── */
           .chatgpt-overlay {
@@ -413,30 +470,116 @@ const SideNavbar = () => {
             margin-top: 10px;
           }
 
-          /* ── Breakpoints ── */
+          /* ── Bottom Navigation Bar (mobile only) ── */
+          .mobile-bottom-nav {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 64px;
+            background: rgba(6, 6, 26, 0.97);
+            border-top: 1px solid rgba(108,93,255,0.25);
+            z-index: 1040;
+            align-items: center;
+            justify-content: space-around;
+            padding: 0 4px;
+            animation: bottomNavIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+          }
+          .bottom-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            height: 100%;
+            cursor: pointer;
+            position: relative;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+            transition: all 0.2s ease;
+            gap: 3px;
+            padding: 6px 0;
+          }
+          .bottom-nav-item .bnav-icon {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
+          }
+          .bottom-nav-item.active .bnav-icon {
+            color: #b49dff;
+            transform: translateY(-2px) scale(1.15);
+            filter: drop-shadow(0 0 6px rgba(180,160,255,0.7));
+          }
+          .bottom-nav-item:not(.active) .bnav-icon {
+            color: #6670bb;
+          }
+          .bottom-nav-item .bnav-label {
+            font-size: 9.5px;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            transition: all 0.2s;
+            white-space: nowrap;
+          }
+          .bottom-nav-item.active .bnav-label {
+            color: #b49dff;
+          }
+          .bottom-nav-item:not(.active) .bnav-label {
+            color: #4a5080;
+          }
+          .bottom-nav-active-pill {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 32px;
+            height: 3px;
+            background: linear-gradient(90deg, #6c5dff, #b49dff);
+            border-radius: 0 0 4px 4px;
+          }
+          .bottom-nav-dot {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 8px;
+            height: 8px;
+            background: #ff4444;
+            border-radius: 50%;
+            border: 1.5px solid rgba(6,6,26,1);
+            animation: blink-glow 1.2s infinite ease-in-out;
+          }
 
-          /* Tablet portrait + small laptop */
+          /* ── Breakpoints ── */
           @media (max-width: 1024px) {
             .chatgpt-hamburger { display: flex; }
+            .chatgpt-hamburger.is-open { display: none !important; }
             .app-sidebar {
               transform: translateX(-100%);
-              width: 280px !important;
+              width: 260px !important;
               border-radius: 0 22px 22px 0 !important;
               box-shadow: 10px 0 40px rgba(0,0,0,0.45);
             }
             .app-sidebar.mobile-open {
               transform: translateX(0);
             }
-            /* Hide original trigger from SideNavbar */
             .mobile-trigger-container { display: none !important; }
+            .mobile-bottom-nav { display: flex !important; }
+            body { padding-bottom: 64px; }
           }
 
           @media (max-width: 768px) {
-            .chatgpt-hamburger { top: 10px; left: 10px; width: 40px; height: 40px; }
+            .chatgpt-hamburger { top: 10px; left: 10px; width: 42px; height: 42px; }
+            .app-sidebar { width: 255px !important; }
           }
 
           @media (max-width: 480px) {
-            .chatgpt-hamburger { top: 8px; left: 8px; width: 38px; height: 38px; border-radius: 8px; }
+            .chatgpt-hamburger { top: 8px; left: 8px; width: 40px; height: 40px; }
+            .app-sidebar { width: 248px !important; border-radius: 0 20px 20px 0 !important; }
+            .bottom-nav-item .bnav-label { font-size: 8.5px; }
           }
 
           /* Safe area (iPhone notch / Dynamic Island) */
@@ -447,6 +590,10 @@ const SideNavbar = () => {
             }
             .chatgpt-hamburger {
               top: calc(10px + env(safe-area-inset-top)) !important;
+            }
+            .mobile-bottom-nav {
+              height: calc(64px + env(safe-area-inset-bottom));
+              padding-bottom: env(safe-area-inset-bottom);
             }
           }
 
@@ -469,9 +616,9 @@ const SideNavbar = () => {
         `}
       </style>
 
-      {/* ── ChatGPT-Style Fixed Hamburger (shows on ≤1024px) ── */}
+      {/* ── Circular Hamburger — same dark navbar color, NO animations, disappears when sidebar opens ── */}
       <button
-        className="chatgpt-hamburger"
+        className={`chatgpt-hamburger ${isMobileMenuOpen ? 'is-open' : ''}`}
         onClick={() => setIsMobileMenuOpen(true)}
         aria-label="Open navigation menu"
       >
@@ -671,8 +818,12 @@ const SideNavbar = () => {
             {menu.map((item, index) => {
               const isActive = location.pathname === item.path;
               return (
-                <Nav.Link as={Link} to={item.path} key={index}
+                <Nav.Link
+                  as={Link}
+                  to={item.path}
+                  key={index}
                   onClick={() => setIsMobileMenuOpen(false)}
+                  className={item.hideOnMobile ? 'd-none d-lg-flex' : ''}
                   style={{
                     display: "flex", alignItems: "center", gap: "12px", padding: "11px 14px", borderRadius: "12px",
                     color: isActive ? "#d6c7ff" : "#b6bbff",
@@ -682,7 +833,7 @@ const SideNavbar = () => {
                   }}
                 >
                   <span className="nav-notification-container" style={{ color: isActive ? "#bfa8ff" : "#9aa2ff" }}>
-                    {item.icon}
+                    {item.isBrain ? <BrainIcon size={18} /> : item.icon}
                     {item.hasNotification && <div className="blinking-dot" />}
                   </span>
                   {item.name}
@@ -700,6 +851,47 @@ const SideNavbar = () => {
           </button>
         </div>
       </div>
+
+      {/* ── Mobile Bottom Navigation Bar ── */}
+      <nav className="mobile-bottom-nav">
+        {bottomNavItems.map((item, index) => {
+          const isActive = location.pathname === item.path;
+          return (
+            <Link
+              to={item.path}
+              key={index}
+              className={`bottom-nav-item ${isActive ? 'active' : ''}`}
+              style={{ textDecoration: 'none' }}
+            >
+              {isActive && <div className="bottom-nav-active-pill" />}
+              <div className="bnav-icon">
+                {item.isBrain ? (
+                  <svg
+                    width={20}
+                    height={20}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="brain-icon-svg-mobile"
+                  >
+                    <path d="M9.5 2a2.5 2.5 0 0 1 2.45 2H12a2.5 2.5 0 0 1 4.95.5A2.49 2.49 0 0 1 18 7v.5A2.5 2.5 0 0 1 20 10v4a2.5 2.5 0 0 1-2 2.45V17a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3v-.55A2.5 2.5 0 0 1 4 14v-4a2.5 2.5 0 0 1 2-2.45V7a2.5 2.5 0 0 1 2.5-2.5"/>
+                    <path d="M12 4.5v15"/>
+                    <path d="M8 8.5c1 0 2-.5 2-1.5"/>
+                    <path d="M16 8.5c-1 0-2-.5-2-1.5"/>
+                    <path d="M8 12.5c1 0 2 .5 2 1.5"/>
+                    <path d="M16 12.5c-1 0-2 .5-2 1.5"/>
+                  </svg>
+                ) : item.icon}
+                {item.hasNotification && <div className="bottom-nav-dot" />}
+              </div>
+              <span className="bnav-label">{item.name}</span>
+            </Link>
+          );
+        })}
+      </nav>
     </>
   );
 };
