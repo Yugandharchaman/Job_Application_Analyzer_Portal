@@ -10,30 +10,6 @@ const Resources = () => {
   const [searchTerm, setSearchTerm] = useState(""); 
   const [isLoading, setIsLoading] = useState(true);
 
-  const platforms = [
-    {
-      name: "LeetCode",
-      url: "https://leetcode.com",
-      desc: "Master Data Structures & Algorithms with industry-standard problems.",
-      color: "#FFA116",
-      stats: "Advanced DSA"
-    },
-    {
-      name: "HackerRank",
-      url: "https://hackerrank.com",
-      desc: "Focus on language proficiency and certification-style challenges.",
-      color: "#2EC866",
-      stats: "Skill Kits"
-    },
-    {
-      name: "CodeChef",
-      url: "https://codechef.com",
-      desc: "Compete in monthly contests and improve your competitive ranking.",
-      color: "#5B4638",
-      stats: "Global Contests"
-    }
-  ];
-
   // FETCH DATA FROM SUPABASE
   useEffect(() => {
     const fetchResources = async () => {
@@ -157,46 +133,9 @@ const Resources = () => {
         </Button>
       </div>
 
-      <div className="mb-5">
-        <h2 className="fw-bold d-flex align-items-center gap-3" style={{ color: "#11102e" }}>
-          Coding Hub
-        </h2>
-        <p className="text-muted ms-3">Direct access to the world's best practice platforms.</p>
-      </div>
-
       <Row className="g-4">
-        <Col lg={8}>
-          <Row className="g-4">
-            {platforms.map((p, idx) => (
-              <Col xs={12} key={idx}>
-                <Card className="border-0 shadow-sm platform-card overflow-hidden" style={{ borderRadius: "24px" }}>
-                  <Card.Body className="p-4 d-md-flex align-items-center justify-content-between">
-                    <div className="d-flex align-items-center gap-4">
-                      <div className="platform-icon" style={{ backgroundColor: p.color }}>
-                        <Award size={32} color="white" />
-                      </div>
-                      <div>
-                        <Badge bg="light" className="text-dark mb-2 border">{p.stats}</Badge>
-                        <h4 className="fw-bold mb-1">{p.name}</h4>
-                        <p className="text-muted mb-0 small" style={{ maxWidth: "400px" }}>{p.desc}</p>
-                      </div>
-                    </div>
-                    <Button 
-                      href={p.url} 
-                      target="_blank" 
-                      className="mt-3 mt-md-0 rounded-pill px-4 py-2 fw-bold d-flex align-items-center gap-2"
-                      style={{ backgroundColor: p.color, border: "none" }}
-                    >
-                      Start Practice <ExternalLink size={16} />
-                    </Button>
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-        </Col>
-
-        <Col lg={4}>
+        {/* ── My Library ── */}
+        <Col lg={4} className="order-1">
           <Card className="border-0 shadow-sm p-4 sticky-top" style={{ borderRadius: "24px", top: "20px" }}>
             <h5 className="fw-bold mb-4 d-flex align-items-center gap-2 text-dark">
               <Bookmark className="text-primary" size={20} /> My Library

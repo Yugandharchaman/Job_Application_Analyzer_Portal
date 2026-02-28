@@ -178,6 +178,9 @@ const InterviewExperience = () => {
 
   const today = new Date().toISOString().split('T')[0];
 
+  // ── ONLY NEW ADDITION: detect if user is actively searching ──
+  const isSearching = searchTerm.trim() !== "" || roleSearch.trim() !== "";
+
   const [formData, setFormData] = useState({ 
     company: "", role: "", questions: "", 
     difficulty: "Medium", interview_date: today, time_slot: "" 
@@ -485,12 +488,65 @@ const InterviewExperience = () => {
           border-color: #6366f1 !important;
           box-shadow: 0 0 0 3px rgba(99,102,241,0.12) !important;
         }
+
+        /* ── MOBILE SEARCH FIX ── */
+        .search-bar-wrapper {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          width: 100%;
+        }
+        .search-input-group {
+          flex: 1 1 160px;
+          min-width: 0;
+          display: flex;
+          align-items: center;
+          background: #f1f5f9;
+          border-radius: 50px;
+          padding: 0 12px;
+          border: 1.5px solid #e0e7ff;
+        }
+        .search-input-group svg {
+          flex-shrink: 0;
+          color: #94a3b8;
+        }
+        .search-input-native {
+          border: none !important;
+          background: transparent !important;
+          outline: none !important;
+          box-shadow: none !important;
+          padding: 10px 8px !important;
+          font-size: 14px !important;
+          width: 100%;
+          color: #1e293b;
+          border-radius: 0 !important;
+          min-width: 0;
+          -webkit-appearance: none;
+        }
+        .search-input-native::placeholder {
+          color: #94a3b8;
+        }
+        .search-input-native:focus {
+          border: none !important;
+          box-shadow: none !important;
+        }
+        .search-input-group:focus-within {
+          border-color: #6366f1;
+          box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+        }
+
+        /* ── HIDE FORM ON MOBILE WHEN SEARCHING ── */
+        @media (max-width: 991px) {
+          .form-col-hide-mobile {
+            display: none !important;
+          }
+        }
       `}</style>
 
-      {/* ── HEADER: White (as per user requirement) ── */}
+      {/* ── HEADER ── */}
       <div className="bg-white border-bottom py-4 mb-5 shadow-sm">
         <Container>
-          <div className="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+          <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
             <div>
               <div className="d-flex align-items-center gap-2 mb-1">
                 <Shield size={16} className="text-primary" />
@@ -498,23 +554,37 @@ const InterviewExperience = () => {
               </div>
               <h2 className="fw-bold m-0">Interview Knowledge Base</h2>
             </div>
-            <div className="d-flex gap-2">
-              <InputGroup className="bg-light rounded-pill px-3 border-0">
-                <InputGroup.Text className="bg-transparent border-0"><Globe size={16}/></InputGroup.Text>
-                <Form.Control 
-                  className="bg-transparent border-0 shadow-none" 
-                  placeholder="Search Company..." 
+
+            {/* ── FIXED: Native inputs inside custom wrappers for full mobile support ── */}
+            <div className="search-bar-wrapper">
+              <div className="search-input-group">
+                <Globe size={15} />
+                <input
+                  className="search-input-native"
+                  placeholder="Search Company..."
+                  value={searchTerm}
                   onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                  type="text"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck="false"
                 />
-              </InputGroup>
-              <InputGroup className="bg-light rounded-pill px-3 border-0">
-                <InputGroup.Text className="bg-transparent border-0"><Briefcase size={16}/></InputGroup.Text>
-                <Form.Control 
-                  className="bg-transparent border-0 shadow-none" 
-                  placeholder="Search Role..." 
+              </div>
+              <div className="search-input-group">
+                <Briefcase size={15} />
+                <input
+                  className="search-input-native"
+                  placeholder="Search Role..."
+                  value={roleSearch}
                   onChange={(e) => { setRoleSearch(e.target.value); setCurrentPage(1); }}
+                  type="text"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck="false"
                 />
-              </InputGroup>
+              </div>
             </div>
           </div>
         </Container>
@@ -522,8 +592,8 @@ const InterviewExperience = () => {
 
       <Container className="ixp-wrapper">
         <Row className="g-4">
-          {/* ── Left: Post Form ── */}
-          <Col lg={4}>
+          {/* ── Left: Post Form — hidden on mobile when isSearching ── */}
+          <Col lg={4} className={isSearching ? "form-col-hide-mobile" : ""}>
             <Card className="form-card sticky-top" style={{ top: '20px' }}>
               <Card.Body className="p-4">
                 <h5 className="fw-bold mb-4 d-flex align-items-center gap-2" style={{ color: '#1e293b' }}>

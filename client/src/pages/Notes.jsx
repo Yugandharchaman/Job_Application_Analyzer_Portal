@@ -22,6 +22,9 @@ const Notes = () => {
     company: ""
   });
 
+  // ── ONLY NEW ADDITION: detect if user is actively searching ──
+  const isSearching = searchTerm.trim() !== "";
+
   // 1. Fetch Notes from Supabase on Load
   useEffect(() => {
     const initialize = async () => {
@@ -194,7 +197,8 @@ const Notes = () => {
       </Row>
 
       <Row className="g-4">
-        <Col lg={4}>
+        {/* ── Quick Capture — hidden on mobile when isSearching ── */}
+        <Col lg={4} className={isSearching ? "form-col-hide-mobile" : ""}>
           <Card className={`border-0 shadow-sm p-4 sticky-top ${editingNoteId ? 'border border-primary' : ''}`} style={{ borderRadius: "24px", top: "20px", transition: "all 0.3s" }}>
             <div className="d-flex justify-content-between align-items-center mb-4">
               <h5 className="fw-bold mb-0">{editingNoteId ? 'Update Note' : 'Quick Capture'}</h5>
@@ -367,6 +371,13 @@ const Notes = () => {
             .custom-tabs.nav-tabs .nav-item { flex: 1 !important; }
             .custom-tabs.nav-tabs .nav-link { width: 100% !important; text-align: center !important; margin-right: 4px !important; padding: 10px 8px !important; font-size: 13px !important; }
             .custom-tabs.nav-tabs .nav-item:last-child .nav-link { margin-right: 0 !important; }
+          }
+
+          /* ── HIDE FORM ON MOBILE WHEN SEARCHING ── */
+          @media (max-width: 991px) {
+            .form-col-hide-mobile {
+              display: none !important;
+            }
           }
         `}
       </style>
