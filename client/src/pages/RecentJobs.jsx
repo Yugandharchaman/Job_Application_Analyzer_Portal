@@ -3,7 +3,10 @@ import { Modal, Button, Form, Row, Col, Dropdown, Toast, Card, Badge, Pagination
 import {
   ExternalLink, Shield, Globe,
   ChevronLeft, ChevronRight, Layers,
-  Cpu, Activity, Plus, ArrowRight, Check, Mail
+  Cpu, Activity, Plus, ArrowRight, Check, Mail,
+  Share2, Copy, CheckCircle, MapPin, DollarSign,
+  Award, Calendar, BookOpen, GitBranch, Briefcase,
+  Clock, Users, Star, Zap
 } from "react-feather";
 import { FaDownload } from "react-icons/fa";
 import NoJobsImg from "../assets/No_Jobs.png";
@@ -39,6 +42,9 @@ const RecentJobs = () => {
   // --- NEW: Email Alerts toggle state ---
   const [emailAlerts, setEmailAlerts] = useState(false);
   const [showEmailToast, setShowEmailToast] = useState(false);
+
+  // --- NEW: Share/Copy link state ---
+  const [copiedJobId, setCopiedJobId] = useState(null);
 
   // ── ADDED JOBS (from AddedJobs page) ──
   const NAVBAR_COLOR = "#11102e";
@@ -222,6 +228,50 @@ const RecentJobs = () => {
     setShowEmailToast(true);
     setTimeout(() => setShowEmailToast(false), 4000);
   };
+
+  // ── NEW: Handle Share/Copy Job Link ──
+  const handleShareJob = (jobId, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Build URL: current origin + pathname + ?job=<id>
+    const baseUrl = window.location.origin + window.location.pathname;
+    const shareUrl = `${baseUrl}?job=${jobId}`;
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopiedJobId(jobId);
+      showToastMessage("🔗 Job link copied! Share it with your friends.", "success");
+      setTimeout(() => setCopiedJobId(null), 2500);
+    }).catch(() => {
+      // fallback
+      const el = document.createElement("textarea");
+      el.value = shareUrl;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setCopiedJobId(jobId);
+      showToastMessage("🔗 Job link copied!", "success");
+      setTimeout(() => setCopiedJobId(null), 2500);
+    });
+  };
+
+  // ── NEW: On mount, check for ?job= param and scroll/highlight ──
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const jobParam = params.get("job");
+    if (jobParam) {
+      // Wait for jobs to load then scroll to the card
+      const tryScroll = setInterval(() => {
+        const el = document.getElementById(`job-card-${jobParam}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.classList.add("job-card-highlight");
+          setTimeout(() => el.classList.remove("job-card-highlight"), 3000);
+          clearInterval(tryScroll);
+        }
+      }, 300);
+      setTimeout(() => clearInterval(tryScroll), 8000);
+    }
+  }, []);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -493,6 +543,13 @@ const RecentJobs = () => {
     showToastMessage(`Status updated to ${newStatus}`, "success");
   };
 
+  // ── Helper: days until deadline ──
+  const getDaysUntilDeadline = (expiryDate) => {
+    if (!expiryDate) return null;
+    const diff = Math.ceil((new Date(expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+    return diff;
+  };
+
   const ProfessionalLoader = () => (
     <div className="system-loader-container">
       <div className="orbit-container">
@@ -660,64 +717,233 @@ const RecentJobs = () => {
           }
           .disclaimer-card::after { content: ''; position: absolute; top: 0; right: 0; width: 150px; height: 150px; background: radial-gradient(circle, rgba(239, 68, 68, 0.1) 0%, transparent 70%); pointer-events: none; }
 
+          /* ══════════════════════════════════════════════
+             NEW PREMIUM JOB CARD STYLES
+          ══════════════════════════════════════════════ */
           .job-card-clean {
             background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 16px;
+            border: 1px solid #e8ecf4;
+            border-radius: 16px;
+            padding: 0;
             height: 100%;
             display: flex;
             flex-direction: column;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            position: relative;
           }
           .job-card-clean:hover {
-            box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.1);
-            border-color: #6c5dff;
+            box-shadow: 0 12px 28px -6px rgba(108, 93, 255, 0.18), 0 4px 10px -4px rgba(0,0,0,0.08);
+            border-color: #c4bbff;
+            transform: translateY(-3px);
           }
           .card-disabled {
-            opacity: 0.6;
-            filter: grayscale(0.4);
+            opacity: 0.55;
+            filter: grayscale(0.5);
             pointer-events: none;
-            background: #fcfcfc;
+            background: #f7f8fa;
           }
 
-          .job-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
-          .company-name { font-size: 1.1rem; font-weight: 800; color: #1e293b; margin: 0; line-height: 1.2; }
-          .job-role { font-size: 0.95rem; color: #64748b; margin-bottom: 12px; font-weight: 500; }
-          .info-divider { height: 1px; background: #f1f5f9; margin: 12px 0; }
-          .info-grid { display: grid; gap: 6px; margin-bottom: 16px; }
-          .info-row { display: flex; align-items: center; font-size: 0.85rem; color: #475569; }
-          .info-label { font-weight: 700; min-width: 80px; color: #1e293b; }
-          .eligibility-status { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 700; padding: 4px 8px; border-radius: 6px; }
-          .dot { width: 6px; height: 6px; border-radius: 50%; }
-          .status-eligible { background: #dcfce7; color: #166534; }
+          /* Card top accent bar */
+          .job-card-accent {
+            height: 4px;
+            background: linear-gradient(90deg, #6c5dff 0%, #a78bfa 50%, #60a5fa 100%);
+            width: 100%;
+            flex-shrink: 0;
+          }
+          .job-card-accent.expired-accent {
+            background: linear-gradient(90deg, #94a3b8 0%, #cbd5e1 100%);
+          }
+
+          /* Card inner padding wrapper */
+          .job-card-inner { padding: 18px 20px 20px; display: flex; flex-direction: column; flex: 1; }
+
+          /* Header row: company + eligibility + share */
+          .job-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 4px;
+            gap: 8px;
+          }
+          .company-name {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 0;
+            line-height: 1.2;
+            letter-spacing: -0.3px;
+          }
+          .header-right-badges {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+          }
+
+          /* Role subtitle */
+          .job-role {
+            font-size: 0.88rem;
+            color: #6c5dff;
+            margin-bottom: 14px;
+            font-weight: 600;
+            letter-spacing: 0.1px;
+          }
+
+          /* Divider */
+          .info-divider { height: 1px; background: linear-gradient(90deg, #e8ecf4 0%, transparent 100%); margin: 0 0 14px; }
+
+          /* Info pills grid */
+          .info-pills-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+          }
+          .info-pill {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            background: #f8f9fc;
+            border: 1px solid #eef0f6;
+            border-radius: 8px;
+            padding: 7px 10px;
+            transition: background 0.2s;
+          }
+          .info-pill:hover { background: #f0eeff; border-color: #d4ccff; }
+          .info-pill-icon {
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+          }
+          .info-pill-content { display: flex; flex-direction: column; min-width: 0; }
+          .info-pill-label { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; line-height: 1; margin-bottom: 2px; }
+          .info-pill-value { font-size: 0.8rem; font-weight: 600; color: #1e293b; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+          /* Full-width pill for branches */
+          .info-pill-full {
+            grid-column: 1 / -1;
+          }
+
+          /* Deadline urgency chip */
+          .deadline-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 3px 9px;
+            border-radius: 20px;
+            letter-spacing: 0.2px;
+          }
+          .deadline-chip.urgent { background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; }
+          .deadline-chip.soon { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+          .deadline-chip.normal { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+          .deadline-chip.expired { background: #f8fafc; color: #94a3b8; border: 1px solid #e2e8f0; }
+
+          /* Eligibility badge */
+          .eligibility-status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 4px 9px;
+            border-radius: 20px;
+            white-space: nowrap;
+          }
+          .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+          .status-eligible { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
           .status-eligible .dot { background: #22c55e; animation: blink-g 1s infinite; }
-          .status-not-eligible { background: #fee2e2; color: #991b1b; }
+          .status-not-eligible { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
           .status-not-eligible .dot { background: #ef4444; }
           @keyframes blink-g { 50% { opacity: 0.3; } }
 
-          .apply-btn-primary {
-            background: #6c5dff; color: white !important; border: none; border-radius: 8px; padding: 10px 0;
-            font-weight: 700; font-size: 0.9rem; width: 100%; display: flex; align-items: center;
-            justify-content: center; gap: 8px; transition: all 0.2s ease; text-decoration: none !important; margin-top: auto;
+          /* Share button */
+          .share-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            background: #f8f9fc;
+            border: 1px solid #e8ecf4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            color: #94a3b8;
           }
-          .apply-btn-primary:hover { background: #5a4ee0; transform: translateY(-2px); }
-          .apply-btn-primary.btn-applied-disabled { background: #94a3b8 !important; cursor: not-allowed !important; pointer-events: none !important; transform: none !important; opacity: 0.75; }
+          .share-btn:hover { background: #eef2ff; border-color: #c4bbff; color: #6c5dff; transform: scale(1.08); }
+          .share-btn.copied { background: #dcfce7; border-color: #86efac; color: #16a34a; animation: sharePop 0.4s cubic-bezier(0.68,-0.55,0.265,1.55); }
+          @keyframes sharePop { 0% { transform: scale(0.8); } 60% { transform: scale(1.2); } 100% { transform: scale(1); } }
 
-          .applied-checkbox-container { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 10px; background: #f8f9fc; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; user-select: none; }
-          .applied-checkbox-container:hover { background: #eef2ff; }
-          .applied-checkbox-container.checked { background: #dcfce7; border: 1px solid #22c55e; cursor: not-allowed; }
-          .applied-checkbox-container.checked:hover { background: #dcfce7; }
-          .applied-checkbox { width: 24px; height: 24px; border: 2px solid #cbd5e1; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; flex-shrink: 0; }
-          .applied-checkbox.checked { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); border-color: #22c55e; animation: checkmark-pop 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4); }
-          .applied-checkbox-label { font-size: 0.85rem; font-weight: 600; color: #475569; }
+          /* Apply button */
+          .apply-btn-primary {
+            background: linear-gradient(135deg, #6c5dff 0%, #5a4ee0 100%);
+            color: white !important;
+            border: none;
+            border-radius: 10px;
+            padding: 11px 0;
+            font-weight: 700;
+            font-size: 0.88rem;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            text-decoration: none !important;
+            margin-top: auto;
+            letter-spacing: 0.2px;
+            box-shadow: 0 4px 12px rgba(108, 93, 255, 0.3);
+          }
+          .apply-btn-primary:hover {
+            background: linear-gradient(135deg, #5a4ee0 0%, #4a3ed0 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(108, 93, 255, 0.4);
+          }
+          .apply-btn-primary.btn-applied-disabled {
+            background: linear-gradient(135deg, #94a3b8 0%, #7c8fa5 100%) !important;
+            cursor: not-allowed !important;
+            pointer-events: none !important;
+            transform: none !important;
+            box-shadow: none !important;
+            opacity: 0.8;
+          }
+          .apply-btn-primary.btn-expired {
+            background: linear-gradient(135deg, #94a3b8 0%, #7c8fa5 100%) !important;
+            box-shadow: none;
+          }
+
+          /* Applied checkbox */
+          .applied-checkbox-container { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 10px 12px; background: #f8f9fc; border-radius: 10px; cursor: pointer; transition: all 0.2s ease; user-select: none; border: 1px solid #eef0f6; }
+          .applied-checkbox-container:hover { background: #eef2ff; border-color: #c4bbff; }
+          .applied-checkbox-container.checked { background: #f0fdf4; border: 1px solid #86efac; cursor: not-allowed; }
+          .applied-checkbox-container.checked:hover { background: #f0fdf4; }
+          .applied-checkbox { width: 22px; height: 22px; border: 2px solid #cbd5e1; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; flex-shrink: 0; }
+          .applied-checkbox.checked { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); border-color: #22c55e; animation: checkmark-pop 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); box-shadow: 0 3px 10px rgba(34, 197, 94, 0.35); }
+          .applied-checkbox-label { font-size: 0.82rem; font-weight: 600; color: #475569; }
           .applied-checkbox-container.checked .applied-checkbox-label { color: #166534; font-weight: 700; }
-          .applied-checkbox-container.disabled-checkbox { background: #f1f5f9; cursor: not-allowed; opacity: 0.55; }
-          .applied-checkbox-container.disabled-checkbox:hover { background: #f1f5f9; }
+          .applied-checkbox-container.disabled-checkbox { background: #f1f5f9; cursor: not-allowed; opacity: 0.5; }
+          .applied-checkbox-container.disabled-checkbox:hover { background: #f1f5f9; border-color: #eef0f6; }
           .applied-checkbox-container.disabled-checkbox .applied-checkbox-label { color: #94a3b8; }
           @keyframes checkmark-pop { 0% { transform: scale(0.5) rotate(-180deg); opacity: 0; } 50% { transform: scale(1.15) rotate(0deg); } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
 
+          /* Card highlight from shared link */
+          @keyframes highlightPulse {
+            0% { box-shadow: 0 0 0 0 rgba(108,93,255,0.5); border-color: #6c5dff; }
+            50% { box-shadow: 0 0 0 12px rgba(108,93,255,0); border-color: #a78bfa; }
+            100% { box-shadow: 0 0 0 0 rgba(108,93,255,0); border-color: #e8ecf4; }
+          }
+          .job-card-highlight { animation: highlightPulse 1s ease-in-out 3; }
+
+          /* Toast styles */
           .custom-toast { position: fixed; top: 80px; right: 20px; z-index: 9999; min-width: 280px; max-width: calc(100vw - 40px); box-shadow: 0 12px 40px rgba(0,0,0,0.25); border-radius: 16px; animation: toastSlideIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); border: 2px solid rgba(255,255,255,0.2); backdrop-filter: blur(10px); }
           @media (max-width: 480px) { .custom-toast { top: auto; bottom: 20px; right: 12px; left: 12px; min-width: unset; max-width: unset; width: auto; border-radius: 14px; } }
           @keyframes toastSlideIn { 0% { transform: translateX(500px) translateY(-20px) rotate(10deg); opacity: 0; } 60% { transform: translateX(-20px) translateY(0) rotate(-2deg); opacity: 1; } 80% { transform: translateX(10px) translateY(0) rotate(1deg); } 100% { transform: translateX(0) translateY(0) rotate(0deg); opacity: 1; } }
@@ -790,10 +1016,40 @@ const RecentJobs = () => {
           .jobs-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px; }
           .tab-email-row { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem; }
 
+          /* ── MOBILE RESPONSIVE FIXES ── */
           @media (max-width: 576px) {
+            /* Mobile: notice card + platforms BELOW job cards */
+            .mobile-order-first { order: 1 !important; }
+            .mobile-order-last { order: 2 !important; }
+            
+            /* disclaimer and platform scroller go below on mobile */
             .disclaimer-card { flex-direction: column; gap: 14px; padding: 20px; }
             .disclaimer-card h5 { font-size: 0.85rem !important; }
             .disclaimer-card p { font-size: 0.8rem !important; }
+
+            /* job cards come FIRST on mobile */
+            .jobs-main-section { order: -1; }
+            .notice-platforms-section { order: 1; }
+
+            /* job card pill grid: full width on very small screens */
+            .info-pills-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+            .info-pill { padding: 6px 8px; gap: 5px; }
+            .info-pill-value { font-size: 0.76rem; }
+            .info-pill-icon { width: 18px; height: 18px; }
+          }
+
+          /* Mobile layout reorder wrapper */
+          .page-content-wrapper {
+            display: flex;
+            flex-direction: column;
+          }
+          @media (max-width: 575.98px) {
+            .section-jobs { order: 1; }
+            .section-notice-platforms { order: 2; }
+          }
+          @media (min-width: 576px) {
+            .section-jobs { order: 2; }
+            .section-notice-platforms { order: 1; }
           }
 
           /* ── APPLIED JOBS TAB STYLES ── */
@@ -888,249 +1144,399 @@ const RecentJobs = () => {
         )}
       </div>
 
-      {/* Platforms */}
-      <div className="platform-scroller">
-        <div className="nav-btn" onClick={() => scroll("left")}><ChevronLeft size={18} /></div>
-        <div className="scroll-area" ref={scrollRef}>
-          {platforms.map((p, i) => (
-            <a key={i} href={p.url} target="_blank" rel="noreferrer" className="platform-item">
-              <div style={{ background: `${p.color}15`, padding: '6px', borderRadius: '50%' }}>
-                <Globe size={16} style={{ color: p.color }} />
+      {/* ── PAGE CONTENT: reorder on mobile so jobs come FIRST ── */}
+      <div className="page-content-wrapper">
+
+        {/* ── SECTION 1 (mobile: order 2): Platforms + Disclaimer ── */}
+        <div className="section-notice-platforms">
+          {/* Platforms */}
+          <div className="platform-scroller">
+            <div className="nav-btn" onClick={() => scroll("left")}><ChevronLeft size={18} /></div>
+            <div className="scroll-area" ref={scrollRef}>
+              {platforms.map((p, i) => (
+                <a key={i} href={p.url} target="_blank" rel="noreferrer" className="platform-item">
+                  <div style={{ background: `${p.color}15`, padding: '6px', borderRadius: '50%' }}>
+                    <Globe size={16} style={{ color: p.color }} />
+                  </div>
+                  <span style={{ fontSize: '14px' }}>{p.name}</span>
+                  <ExternalLink size={12} className="ms-auto opacity-25" />
+                </a>
+              ))}
+            </div>
+            <div className="nav-btn" onClick={() => scroll("right")}><ChevronRight size={18} /></div>
+          </div>
+
+          <div className="disclaimer-card shadow-lg">
+            <div style={{ background: 'rgba(239, 68, 68, 0.2)', padding: '12px', borderRadius: '15px', border: '1px solid rgba(239, 68, 68, 0.3)', flexShrink: 0 }}>
+              <Shield size={32} color="#70d1da" />
+            </div>
+            <div style={{ zIndex: 1 }}>
+              <h5 className="fw-bold mb-2 text-uppercase" style={{ letterSpacing: '1.5px', color: '#70d1da' }}>SECURE NAVIGATION & ANTI-FRAUD DIRECTIVE</h5>
+              <p className="mb-0 text-white-50 small font-italic" style={{ lineHeight: '1.6' }}>
+                <strong>Disclaimer:</strong> This platform serves as a navigational bridge to official career portals.
+                We do not facilitate, authorize, or accept responsibility for any financial transactions.
+                Engagement in such requests is at the user's own risk.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── SECTION 2 (mobile: order 1): Job Cards ── */}
+        <div className="section-jobs">
+          {/* Main Jobs Area */}
+          <div>
+            <div className="jobs-section-header">
+              <h3 className="fw-bold mb-0" style={{ color: '#1e293b' }}>Direct Career Openings</h3>
+
+              {/* Email Alerts Toggle */}
+              <div className="email-alerts-toggle" onClick={handleEmailAlertsToggle} title="Toggle Email Alerts">
+                <Mail size={16} color={emailAlerts ? "#6c5dff" : "#94a3b8"} />
+                <span className="email-alerts-label" style={{ color: emailAlerts ? "#6c5dff" : "#475569" }}>
+                  Email Alerts
+                </span>
+                <div className={`toggle-switch ${emailAlerts ? 'on' : ''}`}>
+                  <div className="toggle-knob"></div>
+                </div>
               </div>
-              <span style={{ fontSize: '14px' }}>{p.name}</span>
-              <ExternalLink size={12} className="ms-auto opacity-25" />
-            </a>
-          ))}
-        </div>
-        <div className="nav-btn" onClick={() => scroll("right")}><ChevronRight size={18} /></div>
-      </div>
-
-      <div className="disclaimer-card shadow-lg">
-        <div style={{ background: 'rgba(239, 68, 68, 0.2)', padding: '12px', borderRadius: '15px', border: '1px solid rgba(239, 68, 68, 0.3)', flexShrink: 0 }}>
-          <Shield size={32} color="#70d1da" />
-        </div>
-        <div style={{ zIndex: 1 }}>
-          <h5 className="fw-bold mb-2 text-uppercase" style={{ letterSpacing: '1.5px', color: '#70d1da' }}>SECURE NAVIGATION & ANTI-FRAUD DIRECTIVE</h5>
-          <p className="mb-0 text-white-50 small font-italic" style={{ lineHeight: '1.6' }}>
-            <strong>Disclaimer:</strong> This platform serves as a navigational bridge to official career portals.
-            We do not facilitate, authorize, or accept responsibility for any financial transactions.
-            Engagement in such requests is at the user's own risk.</p>
-        </div>
-      </div>
-
-      {/* Main Jobs Area */}
-      <div>
-        <div className="jobs-section-header">
-          <h3 className="fw-bold mb-0" style={{ color: '#1e293b' }}>Direct Career Openings</h3>
-
-          {/* Email Alerts Toggle */}
-          <div className="email-alerts-toggle" onClick={handleEmailAlertsToggle} title="Toggle Email Alerts">
-            <Mail size={16} color={emailAlerts ? "#6c5dff" : "#94a3b8"} />
-            <span className="email-alerts-label" style={{ color: emailAlerts ? "#6c5dff" : "#475569" }}>
-              Email Alerts
-            </span>
-            <div className={`toggle-switch ${emailAlerts ? 'on' : ''}`}>
-              <div className="toggle-knob"></div>
             </div>
-          </div>
-        </div>
 
-        {/* ── TABS: Live / Applied / Expired ── */}
-        {!loading && (
-          <div className="tab-email-row">
-            <div className="toggle-container">
-              <button
-                className={`toggle-btn ${activeTab === 'live' ? 'active' : ''}`}
-                onClick={() => handleTabChange('live')}
-              >
-                Live Jobs ({liveJobs.length})
-              </button>
-              <button
-                className={`toggle-btn ${activeTab === 'applied' ? 'active' : ''}`}
-                onClick={() => handleTabChange('applied')}
-              >
-                Applied Jobs ({manualJobs.length + platformAppliedJobs.length})
-              </button>
-              <button
-                className={`toggle-btn ${activeTab === 'expired' ? 'active' : ''}`}
-                onClick={() => handleTabChange('expired')}
-              >
-                Expired ({expiredJobs.length})
-              </button>
-            </div>
-          </div>
-        )}
+            {/* ── TABS: Live / Applied / Expired ── */}
+            {!loading && (
+              <div className="tab-email-row">
+                <div className="toggle-container">
+                  <button
+                    className={`toggle-btn ${activeTab === 'live' ? 'active' : ''}`}
+                    onClick={() => handleTabChange('live')}
+                  >
+                    Live Jobs ({liveJobs.length})
+                  </button>
+                  <button
+                    className={`toggle-btn ${activeTab === 'applied' ? 'active' : ''}`}
+                    onClick={() => handleTabChange('applied')}
+                  >
+                    Applied Jobs ({manualJobs.length + platformAppliedJobs.length})
+                  </button>
+                  <button
+                    className={`toggle-btn ${activeTab === 'expired' ? 'active' : ''}`}
+                    onClick={() => handleTabChange('expired')}
+                  >
+                    Expired ({expiredJobs.length})
+                  </button>
+                </div>
+              </div>
+            )}
 
-        <div style={{ padding: '0' }}>
+            <div style={{ padding: '0' }}>
 
-          {/* ── LIVE / EXPIRED TAB CONTENT ── */}
-          {(activeTab === 'live' || activeTab === 'expired') && (
-            <>
-              {(loading || tabLoading) ? (
-                <div className="bg-white p-5 rounded-4 shadow-sm"><ProfessionalLoader /></div>
-              ) : displayedJobs.length > 0 ? (
-                <Row>
-                  {displayedJobs.map((job, idx) => {
-                    const eligible = checkEligibility(job);
-                    const isExpired = job.expiry_date < today;
-                    const isApplied = appliedJobs[job.id] || false;
+              {/* ── LIVE / EXPIRED TAB CONTENT ── */}
+              {(activeTab === 'live' || activeTab === 'expired') && (
+                <>
+                  {(loading || tabLoading) ? (
+                    <div className="bg-white p-5 rounded-4 shadow-sm"><ProfessionalLoader /></div>
+                  ) : displayedJobs.length > 0 ? (
+                    <Row>
+                      {displayedJobs.map((job, idx) => {
+                        const eligible = checkEligibility(job);
+                        const isExpired = job.expiry_date < today;
+                        const isApplied = appliedJobs[job.id] || false;
+                        const daysLeft = getDaysUntilDeadline(job.expiry_date);
 
-                    return (
-                      <Col md={6} lg={4} key={idx} className="mb-4">
-                        <div className={`job-card-clean ${isExpired ? 'card-disabled' : ''}`}>
-                          <div className="job-card-header">
-                            <h2 className="company-name">{job.company_name}</h2>
-                            {userProfile && !isExpired && (
-                              <div className={`eligibility-status ${eligible ? 'status-eligible' : 'status-not-eligible'}`}>
-                                <div className="dot"></div>
-                                {eligible ? "Eligible" : "Not Eligible"}
-                              </div>
-                            )}
-                          </div>
+                        // Deadline chip config
+                        let deadlineChipClass = "normal";
+                        let deadlineLabel = job.expiry_date || "Open";
+                        if (isExpired) { deadlineChipClass = "expired"; deadlineLabel = "Closed"; }
+                        else if (daysLeft !== null && daysLeft <= 2) { deadlineChipClass = "urgent"; deadlineLabel = daysLeft === 0 ? "Today!" : `${daysLeft}d left`; }
+                        else if (daysLeft !== null && daysLeft <= 7) { deadlineChipClass = "soon"; deadlineLabel = `${daysLeft}d left`; }
 
-                          <div className="job-role">{job.role}</div>
-                          <div className="info-divider"></div>
+                        // Icon background colors
+                        const iconColors = {
+                          exp:      { bg: "#ede9ff", color: "#6c5dff" },
+                          salary:   { bg: "#f0fdf4", color: "#16a34a" },
+                          location: { bg: "#fff7ed", color: "#ea580c" },
+                          degree:   { bg: "#eff6ff", color: "#2563eb" },
+                          cgpa:     { bg: "#fef3c7", color: "#d97706" },
+                          batch:    { bg: "#fdf4ff", color: "#a21caf" },
+                          deadline: { bg: isExpired ? "#f8fafc" : daysLeft !== null && daysLeft <= 2 ? "#fff1f2" : "#f0fdf4", color: isExpired ? "#94a3b8" : daysLeft !== null && daysLeft <= 2 ? "#e11d48" : "#16a34a" },
+                          branches: { bg: "#f0f9ff", color: "#0284c7" },
+                        };
 
-                          <div className="info-grid">
-                            <div className="info-row"><span className="info-label">Exp:</span> {job.experience || "Fresher"}</div>
-                            <div className="info-row"><span className="info-label">Salary:</span> {job.salary || "As per norms"}</div>
-                            <div className="info-row"><span className="info-label">Location:</span> {job.location || "Multiple"}</div>
-                            <div className="info-row"><span className="info-label">Degree:</span> {job.eligible_degree}</div>
-                            <div className="info-row"><span className="info-label">Min CGPA:</span> {job.min_cgpa || "No criteria"}</div>
-                            <div className="info-row"><span className="info-label">Batch:</span> {job.passout_year}</div>
-                            <div className="info-row"><span className="info-label">Deadline:</span> {job.expiry_date || "Open"}</div>
-                            {job.eligible_branches && (
-                              <div className="info-row"><span className="info-label">Branches:</span> {job.eligible_branches}</div>
-                            )}
-                          </div>
-
-                          <a
-                            href={isExpired || isApplied ? "#" : job.apply_link}
-                            target={isExpired || isApplied ? "" : "_blank"}
-                            rel="noreferrer"
-                            className={`apply-btn-primary ${isExpired ? '' : isApplied ? 'btn-applied-disabled' : ''}`}
-                            style={{ background: isExpired ? '#94a3b8' : isApplied ? '#94a3b8' : '#6c5dff' }}
-                            onClick={isApplied ? (e) => e.preventDefault() : undefined}
-                          >
-                            {isExpired ? "Position Closed" : isApplied ? "Already Applied" : "Apply Now"}
-                            <ArrowRight size={16} />
-                          </a>
-
-                          {!isExpired && currentUser && (
+                        return (
+                          <Col md={6} lg={4} key={idx} className="mb-4">
                             <div
-                              className={`applied-checkbox-container ${isApplied ? 'checked' : ''} ${!eligible && !isApplied ? 'disabled-checkbox' : ''}`}
-                              onClick={() => (!eligible && !isApplied) ? undefined : handleAppliedToggle(job.id)}
-                              title={!eligible && !isApplied ? "You are not eligible for this job" : ""}
+                              id={`job-card-${job.id}`}
+                              className={`job-card-clean ${isExpired ? 'card-disabled' : ''}`}
                             >
-                              <div className={`applied-checkbox ${isApplied ? 'checked' : ''}`}>
-                                {isApplied && <Check size={16} color="white" strokeWidth={3} />}
+                              {/* Top accent bar */}
+                              <div className={`job-card-accent ${isExpired ? 'expired-accent' : ''}`}></div>
+
+                              <div className="job-card-inner">
+                                {/* Header: company + badges */}
+                                <div className="job-card-header">
+                                  <div style={{ minWidth: 0, flex: 1 }}>
+                                    <h2 className="company-name">{job.company_name}</h2>
+                                  </div>
+                                  <div className="header-right-badges">
+                                    {userProfile && !isExpired && (
+                                      <div className={`eligibility-status ${eligible ? 'status-eligible' : 'status-not-eligible'}`}>
+                                        <div className="dot"></div>
+                                        {eligible ? "Eligible" : "Not Eligible"}
+                                      </div>
+                                    )}
+                                    {/* Share button */}
+                                    <div
+                                      className={`share-btn ${copiedJobId === job.id ? 'copied' : ''}`}
+                                      onClick={(e) => handleShareJob(job.id, e)}
+                                      title="Copy job link"
+                                    >
+                                      {copiedJobId === job.id
+                                        ? <CheckCircle size={14} />
+                                        : <Share2 size={14} />
+                                      }
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="job-role">
+                                  <Briefcase size={12} style={{ marginRight: 5, verticalAlign: 'middle', opacity: 0.7 }} />
+                                  {job.role}
+                                </div>
+
+                                <div className="info-divider"></div>
+
+                                {/* Info pills grid */}
+                                <div className="info-pills-grid">
+                                  {/* Experience */}
+                                  <div className="info-pill">
+                                    <div className="info-pill-icon" style={{ background: iconColors.exp.bg }}>
+                                      <Zap size={11} color={iconColors.exp.color} />
+                                    </div>
+                                    <div className="info-pill-content">
+                                      <span className="info-pill-label">Exp</span>
+                                      <span className="info-pill-value">{job.experience || "Fresher"}</span>
+                                    </div>
+                                  </div>
+
+                                  {/* Salary */}
+                                  <div className="info-pill">
+                                    <div className="info-pill-icon" style={{ background: iconColors.salary.bg }}>
+                                      <DollarSign size={11} color={iconColors.salary.color} />
+                                    </div>
+                                    <div className="info-pill-content">
+                                      <span className="info-pill-label">Salary</span>
+                                      <span className="info-pill-value">{job.salary || "As per norms"}</span>
+                                    </div>
+                                  </div>
+
+                                  {/* Location */}
+                                  <div className="info-pill">
+                                    <div className="info-pill-icon" style={{ background: iconColors.location.bg }}>
+                                      <MapPin size={11} color={iconColors.location.color} />
+                                    </div>
+                                    <div className="info-pill-content">
+                                      <span className="info-pill-label">Location</span>
+                                      <span className="info-pill-value">{job.location || "Multiple"}</span>
+                                    </div>
+                                  </div>
+
+                                  {/* Degree */}
+                                  <div className="info-pill">
+                                    <div className="info-pill-icon" style={{ background: iconColors.degree.bg }}>
+                                      <BookOpen size={11} color={iconColors.degree.color} />
+                                    </div>
+                                    <div className="info-pill-content">
+                                      <span className="info-pill-label">Degree</span>
+                                      <span className="info-pill-value">{job.eligible_degree}</span>
+                                    </div>
+                                  </div>
+
+                                  {/* Min CGPA */}
+                                  <div className="info-pill">
+                                    <div className="info-pill-icon" style={{ background: iconColors.cgpa.bg }}>
+                                      <Star size={11} color={iconColors.cgpa.color} />
+                                    </div>
+                                    <div className="info-pill-content">
+                                      <span className="info-pill-label">Min CGPA</span>
+                                      <span className="info-pill-value">{job.min_cgpa || "No criteria"}</span>
+                                    </div>
+                                  </div>
+
+                                  {/* Batch */}
+                                  <div className="info-pill">
+                                    <div className="info-pill-icon" style={{ background: iconColors.batch.bg }}>
+                                      <Users size={11} color={iconColors.batch.color} />
+                                    </div>
+                                    <div className="info-pill-content">
+                                      <span className="info-pill-label">Batch</span>
+                                      <span className="info-pill-value">{job.passout_year}</span>
+                                    </div>
+                                  </div>
+
+                                  {/* Deadline - full width */}
+                                  <div className="info-pill info-pill-full">
+                                    <div className="info-pill-icon" style={{ background: iconColors.deadline.bg }}>
+                                      <Clock size={11} color={iconColors.deadline.color} />
+                                    </div>
+                                    <div className="info-pill-content" style={{ flex: 1 }}>
+                                      <span className="info-pill-label">Deadline</span>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <span className="info-pill-value">{job.expiry_date || "Open"}</span>
+                                        <span className={`deadline-chip ${deadlineChipClass}`}>
+                                          {isExpired ? "⛔ Expired" : daysLeft !== null && daysLeft <= 2 ? `🔥 ${deadlineLabel}` : daysLeft !== null && daysLeft <= 7 ? `⏳ ${deadlineLabel}` : `✓ Open`}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Branches - full width */}
+                                  {job.eligible_branches && (
+                                    <div className="info-pill info-pill-full">
+                                      <div className="info-pill-icon" style={{ background: iconColors.branches.bg }}>
+                                        <GitBranch size={11} color={iconColors.branches.color} />
+                                      </div>
+                                      <div className="info-pill-content">
+                                        <span className="info-pill-label">Branches</span>
+                                        <span className="info-pill-value">{job.eligible_branches}</span>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Apply button */}
+                                <a
+                                  href={isExpired || isApplied ? "#" : job.apply_link}
+                                  target={isExpired || isApplied ? "" : "_blank"}
+                                  rel="noreferrer"
+                                  className={`apply-btn-primary ${isExpired ? 'btn-expired' : isApplied ? 'btn-applied-disabled' : ''}`}
+                                  onClick={isApplied ? (e) => e.preventDefault() : undefined}
+                                >
+                                  {isExpired ? (
+                                    <><Clock size={15} /> Position Closed</>
+                                  ) : isApplied ? (
+                                    <><CheckCircle size={15} /> Already Applied</>
+                                  ) : (
+                                    <>Apply Now <ArrowRight size={15} /></>
+                                  )}
+                                </a>
+
+                                {/* I Applied checkbox */}
+                                {!isExpired && currentUser && (
+                                  <div
+                                    className={`applied-checkbox-container ${isApplied ? 'checked' : ''} ${!eligible && !isApplied ? 'disabled-checkbox' : ''}`}
+                                    onClick={() => (!eligible && !isApplied) ? undefined : handleAppliedToggle(job.id)}
+                                    title={!eligible && !isApplied ? "You are not eligible for this job" : ""}
+                                  >
+                                    <div className={`applied-checkbox ${isApplied ? 'checked' : ''}`}>
+                                      {isApplied && <Check size={14} color="white" strokeWidth={3} />}
+                                    </div>
+                                    <span className="applied-checkbox-label">
+                                      {isApplied ? "✓ I Applied to this job" : !eligible ? "Not Eligible to Apply" : "Mark as Applied"}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
-                              <span className="applied-checkbox-label">
-                                {isApplied ? " I Applied to this job" : !eligible ? "Not Eligible to Apply" : "Mark as Applied"}
-                              </span>
                             </div>
-                          )}
+                          </Col>
+                        );
+                      })}
+                    </Row>
+                  ) : (
+                    <div className="py-5 text-center bg-white rounded-4 shadow-sm">
+                      <Layers size={48} className="text-muted mb-3 opacity-25" />
+                      <h5 className="fw-bold text-dark">No Listings Found</h5>
+                      <div className="d-inline-flex align-items-center gap-2 px-4 py-2 rounded-pill" style={{ background: '#f1f5f9', color: '#475569', fontSize: '0.9rem', fontWeight: '600' }}>
+                        Please check daily for more updates
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* ── APPLIED JOBS TAB CONTENT ── */}
+              {activeTab === 'applied' && (
+                <div>
+                  {/* Filter Bar */}
+                  <div className="applied-filter-bar">
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', flex: 1 }}>
+                      <Form.Control
+                        placeholder="Search by company Name"
+                        style={{ borderRadius: "8px", maxWidth: '300px' }}
+                        value={search}
+                        onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+                      />
+                      <Form.Control
+                        type="date"
+                        style={{ borderRadius: "8px", maxWidth: '180px' }}
+                        value={filterDate}
+                        max={todayStr}
+                        onChange={(e) => { setFilterDate(e.target.value); setCurrentPage(1); }}
+                        disabled={search.trim() !== ""}
+                      />
+                      {filterDate !== "" && (
+                        <button
+                          onClick={() => { setFilterDate(""); setCurrentPage(1); }}
+                          style={{ border: '1px solid #e2e8f0', background: '#f8f9fc', borderRadius: '8px', padding: '6px 14px', fontSize: '0.82rem', fontWeight: '700', color: '#475569', cursor: 'pointer' }}
+                        >
+                          Clear Date ✕
+                        </button>
+                      )}
+                    </div>
+                    <div className="applied-count-badge">
+                      <span style={{ fontSize: '0.65rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.75 }}>
+                        {search.trim() !== "" ? "Found" : dateCardText}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '1.2rem', fontWeight: '800' }}>{countForDate}</span>
+                        <Badge bg="light" text="dark" pill style={{ fontSize: '0.7rem' }}>Applications</Badge>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Applied Jobs Grid */}
+                  {(tabLoading || addedJobsLoading) ? (
+                    <div className="bg-white p-5 rounded-4 shadow-sm"><ProfessionalLoader /></div>
+                  ) : allFilteredAppliedJobs.length === 0 ? (
+                    <div className="text-center py-5 d-flex flex-column align-items-center bg-white rounded-4 shadow-sm">
+                      <img src={NoJobsImg} alt="No jobs" style={{ maxWidth: "100%", width: "400px", opacity: 0.8 }} />
+                      <h5 className="mt-3 text-muted">
+                        {search.trim() !== "" ? `No applications found for "${search}"` : filterDate !== "" ? `No Jobs Applied On "${filterDate}"` : `No Applications Yet`}
+                      </h5>
+                      {(search.trim() === "" && filterDate === "") && (
+                        <div className="d-inline-flex align-items-center gap-2 px-4 py-2 rounded-pill mt-2"
+                          style={{ background: '#f1f5f9', color: '#475569', fontSize: '0.9rem', fontWeight: '600' }}>
+                          Go to Live Jobs tab and mark jobs as Applied ✓
                         </div>
-                      </Col>
-                    );
-                  })}
-                </Row>
-              ) : (
-                <div className="py-5 text-center bg-white rounded-4 shadow-sm">
-                  <Layers size={48} className="text-muted mb-3 opacity-25" />
-                  <h5 className="fw-bold text-dark">No Listings Found</h5>
-                  <div className="d-inline-flex align-items-center gap-2 px-4 py-2 rounded-pill" style={{ background: '#f1f5f9', color: '#475569', fontSize: '0.9rem', fontWeight: '600' }}>
-                    Please check daily for more updates
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* ── APPLIED JOBS TAB CONTENT ── */}
-          {activeTab === 'applied' && (
-            <div>
-              {/* Filter Bar */}
-              <div className="applied-filter-bar">
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', flex: 1 }}>
-                  <Form.Control
-                    placeholder="Search by company Name"
-                    style={{ borderRadius: "8px", maxWidth: '300px' }}
-                    value={search}
-                    onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-                  />
-                  <Form.Control
-                    type="date"
-                    style={{ borderRadius: "8px", maxWidth: '180px' }}
-                    value={filterDate}
-                    max={todayStr}
-                    onChange={(e) => { setFilterDate(e.target.value); setCurrentPage(1); }}
-                    disabled={search.trim() !== ""}
-                  />
-                  {filterDate !== "" && (
-                    <button
-                      onClick={() => { setFilterDate(""); setCurrentPage(1); }}
-                      style={{ border: '1px solid #e2e8f0', background: '#f8f9fc', borderRadius: '8px', padding: '6px 14px', fontSize: '0.82rem', fontWeight: '700', color: '#475569', cursor: 'pointer' }}
-                    >
-                      Clear Date ✕
-                    </button>
-                  )}
-                </div>
-                <div className="applied-count-badge">
-                  <span style={{ fontSize: '0.65rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.75 }}>
-                    {search.trim() !== "" ? "Found" : dateCardText}
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '1.2rem', fontWeight: '800' }}>{countForDate}</span>
-                    <Badge bg="light" text="dark" pill style={{ fontSize: '0.7rem' }}>Applications</Badge>
-                  </div>
-                </div>
-              </div>
-
-              {/* Applied Jobs Grid */}
-              {(tabLoading || addedJobsLoading) ? (
-                <div className="bg-white p-5 rounded-4 shadow-sm"><ProfessionalLoader /></div>
-              ) : allFilteredAppliedJobs.length === 0 ? (
-                <div className="text-center py-5 d-flex flex-column align-items-center bg-white rounded-4 shadow-sm">
-                  <img src={NoJobsImg} alt="No jobs" style={{ maxWidth: "100%", width: "400px", opacity: 0.8 }} />
-                  <h5 className="mt-3 text-muted">
-                    {search.trim() !== "" ? `No applications found for "${search}"` : filterDate !== "" ? `No Jobs Applied On "${filterDate}"` : `No Applications Yet`}
-                  </h5>
-                  {(search.trim() === "" && filterDate === "") && (
-                    <div className="d-inline-flex align-items-center gap-2 px-4 py-2 rounded-pill mt-2"
-                      style={{ background: '#f1f5f9', color: '#475569', fontSize: '0.9rem', fontWeight: '600' }}>
-                      Go to Live Jobs tab and mark jobs as Applied ✓
+                      )}
                     </div>
-                  )}
-                </div>
-              ) : (
-                <div className="pb-4">
-                  <Row className="g-4 mb-4">
-                    {currentAppliedJobs.map((job, idx) => renderAppliedJobCard(job, idx))}
-                  </Row>
+                  ) : (
+                    <div className="pb-4">
+                      <Row className="g-4 mb-4">
+                        {currentAppliedJobs.map((job, idx) => renderAppliedJobCard(job, idx))}
+                      </Row>
 
-                  {totalPages > 1 && (
-                    <div className="d-flex justify-content-center mt-4 mb-4 overflow-auto">
-                      <Pagination>
-                        <Pagination.First onClick={() => setCurrentPage(1)} disabled={currentPage === 1} />
-                        <Pagination.Prev onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1} />
-                        {startPage > 1 && (<><Pagination.Item onClick={() => setCurrentPage(1)}>1</Pagination.Item><Pagination.Ellipsis disabled /></>)}
-                        {Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i).map((page) => (
-                          <Pagination.Item key={page} active={page === currentPage} onClick={() => setCurrentPage(page)}>{page}</Pagination.Item>
-                        ))}
-                        {endPage < totalPages && (<><Pagination.Ellipsis disabled /><Pagination.Item onClick={() => setCurrentPage(totalPages)}>{totalPages}</Pagination.Item></>)}
-                        <Pagination.Next onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} />
-                        <Pagination.Last onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} />
-                      </Pagination>
+                      {totalPages > 1 && (
+                        <div className="d-flex justify-content-center mt-4 mb-4 overflow-auto">
+                          <Pagination>
+                            <Pagination.First onClick={() => setCurrentPage(1)} disabled={currentPage === 1} />
+                            <Pagination.Prev onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1} />
+                            {startPage > 1 && (<><Pagination.Item onClick={() => setCurrentPage(1)}>1</Pagination.Item><Pagination.Ellipsis disabled /></>)}
+                            {Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i).map((page) => (
+                              <Pagination.Item key={page} active={page === currentPage} onClick={() => setCurrentPage(page)}>{page}</Pagination.Item>
+                            ))}
+                            {endPage < totalPages && (<><Pagination.Ellipsis disabled /><Pagination.Item onClick={() => setCurrentPage(totalPages)}>{totalPages}</Pagination.Item></>)}
+                            <Pagination.Next onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} />
+                            <Pagination.Last onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} />
+                          </Pagination>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               )}
+
             </div>
-          )}
-
+          </div>
         </div>
-      </div>
+
+      </div>{/* end page-content-wrapper */}
 
       {/* ADMIN MODAL */}
       <Modal show={showAdminForm} onHide={() => setShowAdminForm(false)} size="lg" centered dialogClassName="admin-modal-dialog">
