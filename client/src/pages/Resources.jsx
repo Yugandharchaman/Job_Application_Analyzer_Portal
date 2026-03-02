@@ -102,36 +102,6 @@ const Resources = () => {
   return (
     <Container fluid className="py-4 px-lg-5 animate-in" style={{ background: "#f8faff", minHeight: "100vh", position: 'relative' }}>
       <Toaster position="bottom-right" />
-      
-      <div className="d-none d-md-flex gap-2 position-absolute top-0 end-0 mt-4 me-lg-5">
-        <Button 
-          href="https://www.mployee.me/" 
-          target="_blank"
-          variant="white"
-          className="shadow-sm border-0 rounded-pill px-3 py-2 d-flex align-items-center gap-2 compiler-btn"
-          style={{ fontSize: '13px', fontWeight: '700', color: '#e5304b', border: '1px solid #ff475722' }}
-        >
-          <FileText size={16} /> Check Resume Score
-        </Button>
-        <Button 
-          href="https://www.programiz.com/python-programming/online-compiler/" 
-          target="_blank"
-          variant="white"
-          className="shadow-sm border-0 rounded-pill px-3 py-2 d-flex align-items-center gap-2 compiler-btn"
-          style={{ fontSize: '13px', fontWeight: '600', color: '#3b51a3' }}
-        >
-          <Terminal size={16} /> Programiz
-        </Button>
-        <Button 
-          href="https://www.onlinegdb.com/online_python_compiler" 
-          target="_blank"
-          variant="white"
-          className="shadow-sm border-0 rounded-pill px-3 py-2 d-flex align-items-center gap-2 compiler-btn"
-          style={{ fontSize: '13px', fontWeight: '600', color: '#2b8a3e' }}
-        >
-          <Code size={16} /> OnlineGDB
-        </Button>
-      </div>
 
       <Row className="g-4">
         {/* ── My Library ── */}

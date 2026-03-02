@@ -250,7 +250,7 @@ const SideNavbar = () => {
     { name: "Notes", icon: <FileText size={18} />, path: "/notes" },
     { name: "Rejections", icon: <XCircle size={18} style={{color: "red"}} />, path: "/rejections" },
     { name: "Resources", icon: <Book size={18} />, path: "/resources" },
-    { name: "AI Resume Analyzer", icon: <Search size={18} />, path: "/resume-analyzer" },
+    { name: "AI Resume Analyzer", icon: <Search size={18} />, path: "/ai-resume-analyzer" },
     { name: "Daily News", icon: <Rss size={18} />, path: "/daily-news", hideOnMobile: true },
     { name: "Connect with Me", icon: <Target size={18} />, path: "/connect" }
   ];
