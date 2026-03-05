@@ -18,7 +18,6 @@ const LeetcodeCoinBurst = ({ onDone }) => {
     return () => clearTimeout(t);
   }, [onDone]);
 
-  // 16 particles radiating outward like LeetCode XP animation
   const particles = Array.from({ length: 16 }, (_, i) => {
     const angle = (i / 16) * 360;
     const distance = 80 + Math.random() * 60;
@@ -35,7 +34,6 @@ const LeetcodeCoinBurst = ({ onDone }) => {
       position: 'fixed', inset: 0, pointerEvents: 'none',
       zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center'
     }}>
-      {/* Center burst ring */}
       <div style={{
         position: 'absolute',
         width: '80px', height: '80px',
@@ -44,7 +42,6 @@ const LeetcodeCoinBurst = ({ onDone }) => {
         animation: 'lcRingExpand 0.6s ease-out forwards',
       }} />
 
-      {/* +5 center label */}
       <div style={{
         position: 'absolute',
         animation: 'lcBonusLabel 1.8s cubic-bezier(0.175,0.885,0.32,1.275) forwards',
@@ -61,7 +58,6 @@ const LeetcodeCoinBurst = ({ onDone }) => {
         <div style={{ fontSize: '13px', color: '#FFD700', fontWeight: 700, marginTop: '-4px' }}>🪙 Coins</div>
       </div>
 
-      {/* Radiating coin particles */}
       {particles.map((p, i) => (
         <div key={i} style={{
           position: 'absolute',
@@ -242,7 +238,7 @@ const SideNavbar = () => {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // ── Gamification (stored in Supabase) ──
+  // ── Gamification ──
   const [coins, setCoins] = useState(0);
   const [streak, setStreak] = useState(0);
   const [loginHistory, setLoginHistory] = useState([]);
@@ -267,16 +263,14 @@ const SideNavbar = () => {
   const [tempImageFile, setTempImageFile] = useState(null);
   const [tempResumeFile, setTempResumeFile] = useState(null);
 
-  // ── Hide profile avatar when sidebar is open (not on dashboard root) ──
   const isOnDashboard = location.pathname === '/';
 
   // ─────────────────────────────────────────────────────────────
-  // NOTIFICATIONS: fetch from Supabase + 1-month filter + read state
+  // NOTIFICATIONS
   // ─────────────────────────────────────────────────────────────
   const fetchNotifications = useCallback(async (userId) => {
     if (!userId) return;
     try {
-      // Fetch hiring_updates from last 30 days
       const oneMonthAgo = new Date();
       oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
 
@@ -288,13 +282,11 @@ const SideNavbar = () => {
 
       if (error) throw error;
 
-      // Fetch which ones user has read
       const { data: readRows } = await supabase
         .from("notification_reads")
         .select("notification_id")
         .eq("user_id", userId);
 
-      // Stringify both sides to avoid BIGINT vs STRING type mismatch
       const readSet = new Set((readRows || []).map(r => String(r.notification_id)));
 
       const formatted = (updates || []).map(u => {
@@ -336,7 +328,6 @@ const SideNavbar = () => {
     if (!currentUserId.current) return;
     const unread = notifications.filter(n => !n.is_read);
     if (unread.length === 0) return;
-
     const rows = unread.map(n => ({ user_id: currentUserId.current, notification_id: n.id }));
     await supabase.from("notification_reads").upsert(rows, { onConflict: 'user_id,notification_id' });
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
@@ -351,15 +342,8 @@ const SideNavbar = () => {
     setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, is_read: true } : n));
   }, []);
 
-  // Auto-mark read when panel opened
-  useEffect(() => {
-    if (showNotifications && unreadCount > 0) {
-      // Don't auto-mark — let user explicitly click
-    }
-  }, [showNotifications]);
-
   // ─────────────────────────────────────────────────────────────
-  // GAMIFICATION: coins & streak stored in Supabase user_gamification table
+  // GAMIFICATION
   // ─────────────────────────────────────────────────────────────
   const initGamification = useCallback(async (userId) => {
     if (!userId) return;
@@ -367,7 +351,6 @@ const SideNavbar = () => {
       const today = new Date().toDateString();
       const welcomeKey = `jv_welcomed_${userId}`;
 
-      // Fetch from Supabase
       const { data, error } = await supabase
         .from("user_gamification")
         .select("*")
@@ -385,7 +368,6 @@ const SideNavbar = () => {
       if (isNewDay) {
         currentCoins += 5;
 
-        // Streak logic
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         if (lastLogin === yesterday.toDateString()) {
@@ -398,7 +380,6 @@ const SideNavbar = () => {
           history = [...history.slice(-89), today];
         }
 
-        // Upsert to Supabase
         await supabase.from("user_gamification").upsert({
           user_id: userId,
           coins: currentCoins,
@@ -426,7 +407,6 @@ const SideNavbar = () => {
       setStreak(currentStreak);
       setLoginHistory(history);
 
-      // Welcome toast for new users
       if (!localStorage.getItem(welcomeKey)) {
         setTimeout(() => {
           toast((t) => (
@@ -466,7 +446,7 @@ const SideNavbar = () => {
     init();
   }, []);
 
-  // ── Real-time: new hiring_updates → push notification to all ──
+  // ── Real-time notifications ──
   useEffect(() => {
     const channel = supabase
       .channel("realtime-notif-new")
@@ -474,7 +454,6 @@ const SideNavbar = () => {
         event: "INSERT", schema: "public", table: "hiring_updates"
       }, async (payload) => {
         if (!currentUserId.current) return;
-        // Add new notification to top of list as unread
         const u = payload.new;
         const content = u.content || '';
         const isDeadline = content.toLowerCase().includes('deadline') || content.toLowerCase().includes('expire');
@@ -767,20 +746,20 @@ const SideNavbar = () => {
         .brain-icon-svg-mobile { animation: brainPulseMobile 2.2s ease-in-out infinite; }
 
         /* ════════════════════════════════════════════
-           TOP BAR — increased height to 68px
+           TOP BAR — WHITE THEME
            ════════════════════════════════════════════ */
         .jv-topbar {
           display: none;
           position: fixed; top: 0; left: 0; right: 0; height: 68px;
-          background: rgba(6,6,26,0.97);
+          background: rgba(255,255,255,0.97);
           z-index: 1055;
           align-items: center;
           padding: 0 16px;
           animation: topBarSlideIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
-          border-bottom: 1px solid rgba(108,93,255,0.18);
+          border-bottom: 1px solid #e2e8f0;
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
-          box-shadow: 0 2px 24px rgba(0,0,0,0.45);
+          box-shadow: 0 1px 12px rgba(0,0,0,0.08);
         }
 
         /* LEFT: profile button */
@@ -792,22 +771,23 @@ const SideNavbar = () => {
         .jv-avatar-wrap { position: relative; width: 42px; height: 42px; flex-shrink: 0; }
         .jv-avatar-img {
           width: 42px; height: 42px; border-radius: 50%;
-          border: 2px solid rgba(108,93,255,0.55);
-          background: rgba(255,255,255,0.1);
+          border: 2px solid rgba(108,93,255,0.35);
+          background: rgba(108,93,255,0.06);
           display: flex; align-items: center; justify-content: center; overflow: hidden;
         }
         .jv-avatar-img img { width: 100%; height: 100%; object-fit: cover; }
         .jv-avatar-online {
           position: absolute; bottom: 1px; right: 1px; width: 11px; height: 11px;
-          background: #28a745; border-radius: 50%; border: 2px solid rgba(6,6,26,1);
+          background: #28a745; border-radius: 50%; border: 2px solid #fff;
           animation: online-pulse 2s infinite;
         }
         .jv-profile-info { text-align: left; }
         .jv-profile-name {
-          color: #fff; font-size: 13px; font-weight: 800; line-height: 1.2;
+          color: #0f172a;
+          font-size: 13px; font-weight: 800; line-height: 1.2;
           max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
-        .jv-profile-sub { color: rgba(180,157,255,0.6); font-size: 9.5px; font-weight: 500; }
+        .jv-profile-sub { color: #94a3b8; font-size: 9.5px; font-weight: 500; }
 
         /* Disable profile button when sidebar is open on non-dashboard */
         .jv-profile-btn.sidebar-disabled { pointer-events: none; opacity: 0.5; }
@@ -815,29 +795,29 @@ const SideNavbar = () => {
         /* CENTER logo */
         .jv-topbar-logo {
           position: absolute; left: 50%; transform: translateX(-50%);
-          color: #fff; font-size: 15px; font-weight: 900;
+          color: #0f172a; font-size: 15px; font-weight: 900;
           letter-spacing: -0.2px; white-space: nowrap; pointer-events: none;
         }
 
         /* RIGHT: no card backgrounds — plain icon+text style */
         .jv-topbar-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
 
-        /* Streak: just emoji + number, no bg */
+        /* Streak / Coins */
         .jv-stat {
           display: flex; align-items: center; gap: 3px;
           background: none; border: none; padding: 0;
           cursor: pointer; -webkit-tap-highlight-color: transparent;
         }
         .jv-stat-emoji { font-size: 15px; line-height: 1; }
-        .jv-stat-val { font-size: 13px; font-weight: 900; color: #fff; letter-spacing: -0.3px; }
+        .jv-stat-val { font-size: 13px; font-weight: 900; color: #0f172a; letter-spacing: -0.3px; }
         .jv-stat.streak .jv-stat-emoji { animation: flamePulse 1.5s ease-in-out infinite; display: inline-block; }
         .jv-stat.coins  .jv-stat-emoji { animation: coinShine 2s ease-in-out infinite; display: inline-block; }
 
-        /* Bell: just icon, no bg card */
+        /* Bell */
         .jv-bell {
           position: relative; display: flex; align-items: center; justify-content: center;
           background: none; border: none; padding: 2px;
-          cursor: pointer; color: #cfd3ff; -webkit-tap-highlight-color: transparent;
+          cursor: pointer; color: #475569; -webkit-tap-highlight-color: transparent;
           flex-shrink: 0;
         }
         .jv-bell.ringing { animation: bellRing 3.5s ease-in-out infinite; }
@@ -846,17 +826,17 @@ const SideNavbar = () => {
           background: #ff3232; color: #fff;
           font-size: 9px; font-weight: 900;
           border-radius: 10px; padding: 1px 4px; min-width: 16px; text-align: center;
-          border: 1.5px solid rgba(6,6,26,1);
+          border: 1.5px solid #fff;
           animation: redDotPulse 1.5s infinite;
           line-height: 1.4;
         }
         .jv-bell-dot {
           position: absolute; top: -1px; right: -1px; width: 8px; height: 8px;
-          background: #ff3232; border-radius: 50%; border: 1.5px solid rgba(6,6,26,1);
+          background: #ff3232; border-radius: 50%; border: 1.5px solid #fff;
           animation: redDotPulse 1.5s infinite;
         }
 
-        /* Sidebar gamification (desktop) — no card bg */
+        /* Sidebar gamification (desktop) */
         .sidebar-gami-row {
           display: flex; gap: 16px; justify-content: center;
           margin-bottom: 14px; flex-shrink: 0; align-items: center;
@@ -929,7 +909,6 @@ const SideNavbar = () => {
         }
 
         /* ── Responsive ── */
-        /* Desktop: explicitly hide topbar and bottom nav, no body padding-top */
         @media (min-width: 1025px) {
           .jv-topbar { display: none !important; }
           .mobile-bottom-nav { display: none !important; }
@@ -990,11 +969,10 @@ const SideNavbar = () => {
       />
 
       {/* ════════════════════════════════════════════════════════
-          TOP BAR (mobile ≤1024px only)
+          TOP BAR (mobile ≤1024px only) — WHITE
           ════════════════════════════════════════════════════════ */}
       <div className="jv-topbar">
-        {/* LEFT: Profile avatar → opens sidebar
-            Disabled (greyed out) when NOT on dashboard and sidebar is open */}
+        {/* LEFT: Profile avatar */}
         <button
           className={`jv-profile-btn ${isMobileMenuOpen && !isOnDashboard ? 'sidebar-disabled' : ''}`}
           onClick={() => {
@@ -1006,11 +984,11 @@ const SideNavbar = () => {
           <div className="jv-avatar-wrap">
             <div className="jv-avatar-img">
               {loadingProfile ? (
-                <Spinner animation="border" size="sm" style={{ color: '#cfd3ff', width: '18px', height: '18px' }} />
+                <Spinner animation="border" size="sm" style={{ color: '#6c5dff', width: '18px', height: '18px' }} />
               ) : profile.profileImg ? (
                 <img src={profile.profileImg} alt="Profile" />
               ) : (
-                <User size={18} color="#cfd3ff" />
+                <User size={18} color="#6c5dff" />
               )}
             </div>
             <div className="jv-avatar-online" />
@@ -1021,7 +999,7 @@ const SideNavbar = () => {
           </div>
         </button>
 
-        {/* RIGHT: Streak · Coins · Bell — NO card backgrounds */}
+        {/* RIGHT: Streak · Coins · Bell */}
         <div className="jv-topbar-right">
           <button className="jv-stat streak" onClick={() => setShowStreakCalendar(true)} title="Streak calendar">
             <span className="jv-stat-emoji">🔥</span>
@@ -1052,7 +1030,7 @@ const SideNavbar = () => {
         onClick={() => setIsMobileMenuOpen(false)}
       />
 
-      {/* ── Main Sidebar ── */}
+      {/* ── Main Sidebar (always dark) ── */}
       <div className={`app-sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
         {/* Close button (mobile) */}
         <div className="d-lg-none text-end mb-2" style={{ marginTop: '-8px', flexShrink: 0 }}>
@@ -1065,7 +1043,7 @@ const SideNavbar = () => {
           </button>
         </div>
 
-        {/* Profile avatar (desktop sidebar only — hidden on mobile since Profile menu item exists) */}
+        {/* Profile avatar (desktop sidebar only) */}
         <div
           className="profile-trigger d-none d-lg-flex justify-content-center align-items-center"
           onClick={() => {
@@ -1086,7 +1064,7 @@ const SideNavbar = () => {
           </div>
         </div>
 
-        {/* Desktop gamification — NO card bg */}
+        {/* Desktop gamification */}
         <div className="sidebar-gami-row">
           <button className="sidebar-gami-item" onClick={() => setShowStreakCalendar(true)} title="Streak">
             <span className="ge" style={{ animation: 'flamePulse 1.5s infinite', display: 'inline-block' }}>🔥</span>
@@ -1133,7 +1111,6 @@ const SideNavbar = () => {
                   <input type="file" hidden ref={fileInputRef} accept="image/*" onChange={handleImageChange} />
                 </div>
 
-                {/* Profile gamification badges */}
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '16px' }}>
                   <div
                     onClick={() => { setShowProfile(false); setTimeout(() => setShowStreakCalendar(true), 200); }}
@@ -1259,7 +1236,7 @@ const SideNavbar = () => {
         {/* ── Scrollable Nav Menu ── */}
         <div className="sidebar-scroll-area">
           <Nav className="flex-column gap-1">
-            {/* Profile — mobile only (d-lg-none), opens the profile modal */}
+            {/* Profile — mobile only */}
             <div
               className="d-lg-none"
               onClick={() => {

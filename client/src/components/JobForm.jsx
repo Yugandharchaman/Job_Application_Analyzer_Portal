@@ -1,869 +1,806 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "../supabaseClient";
 import toast, { Toaster } from "react-hot-toast";
 
 // ─────────────────────────────────────────────
-// GK QUESTION BANK (200+ questions, rotated daily)
+// GK QUESTION BANK — with MCQ options
 // ─────────────────────────────────────────────
 const GK_QUESTIONS = [
-  // INDIA - Geography
-  { q: "What is the national animal of India?", a: "Bengal Tiger", cat: "India" },
-  { q: "Which is the longest river in India?", a: "Ganga (Ganges)", cat: "India" },
-  { q: "What is the capital of India?", a: "New Delhi", cat: "India" },
-  { q: "Which state has the largest area in India?", a: "Rajasthan", cat: "India" },
-  { q: "What is the national bird of India?", a: "Indian Peacock", cat: "India" },
-  { q: "Which is the highest peak in India?", a: "Kangchenjunga", cat: "India" },
-  { q: "What is the national flower of India?", a: "Lotus", cat: "India" },
-  { q: "Which city is known as the Pink City of India?", a: "Jaipur", cat: "India" },
-  { q: "What is the national fruit of India?", a: "Mango", cat: "India" },
-  { q: "Which is the smallest state of India by area?", a: "Goa", cat: "India" },
-  { q: "What is the national river of India?", a: "Ganga", cat: "India" },
-  { q: "Which Indian state has the longest coastline?", a: "Gujarat", cat: "India" },
-  { q: "What is the currency of India?", a: "Indian Rupee (₹)", cat: "India" },
-  { q: "Which city is called the 'Silicon Valley of India'?", a: "Bengaluru", cat: "India" },
-  { q: "What is the national game of India?", a: "Hockey", cat: "India" },
-  { q: "Which is the largest lake in India?", a: "Chilika Lake", cat: "India" },
-  { q: "What is the national tree of India?", a: "Indian Banyan", cat: "India" },
-  { q: "Which city is known as the 'City of Lakes'?", a: "Udaipur", cat: "India" },
-  { q: "What is the full form of ISRO?", a: "Indian Space Research Organisation", cat: "India" },
-  { q: "Which Indian state is the largest producer of tea?", a: "Assam", cat: "India" },
-  // INDIA - History & Politics
-  { q: "Who is called the 'Father of the Nation' of India?", a: "Mahatma Gandhi", cat: "India" },
-  { q: "In which year did India gain independence?", a: "1947", cat: "India" },
-  { q: "Who was the first Prime Minister of India?", a: "Jawaharlal Nehru", cat: "India" },
-  { q: "Who was the first President of India?", a: "Dr. Rajendra Prasad", cat: "India" },
-  { q: "In which year was the Indian Constitution adopted?", a: "1950 (January 26)", cat: "India" },
-  { q: "Who wrote the Indian National Anthem 'Jana Gana Mana'?", a: "Rabindranath Tagore", cat: "India" },
-  { q: "Which battle is known as the turning point of Indian history in 1757?", a: "Battle of Plassey", cat: "India" },
-  { q: "Who was the first female Prime Minister of India?", a: "Indira Gandhi", cat: "India" },
-  { q: "What does 'Satyameva Jayate' mean?", a: "Truth Alone Triumphs", cat: "India" },
-  { q: "Who designed the Indian Parliament building?", a: "Herbert Baker & Edwin Lutyens", cat: "India" },
-  // INDIA - Science & Achievements
-  { q: "India's first satellite was named?", a: "Aryabhata", cat: "India" },
-  { q: "Who is known as the 'Missile Man of India'?", a: "Dr. A.P.J. Abdul Kalam", cat: "India" },
-  { q: "Which Indian mathematician invented the concept of Zero?", a: "Aryabhata", cat: "India" },
-  { q: "India's first moon mission was called?", a: "Chandrayaan-1", cat: "India" },
-  { q: "Who founded the Indian National Congress in 1885?", a: "Allan Octavian Hume", cat: "India" },
-  // WORLD - Geography
-  { q: "What is the largest continent in the world?", a: "Asia", cat: "World" },
-  { q: "Which is the longest river in the world?", a: "Nile River", cat: "World" },
-  { q: "What is the highest mountain in the world?", a: "Mount Everest (8,848.86 m)", cat: "World" },
-  { q: "Which is the largest ocean in the world?", a: "Pacific Ocean", cat: "World" },
-  { q: "What is the smallest country in the world?", a: "Vatican City", cat: "World" },
-  { q: "Which is the largest country by area?", a: "Russia", cat: "World" },
-  { q: "What is the most populous country in the world?", a: "India (as of 2023)", cat: "World" },
-  { q: "Which is the deepest ocean trench?", a: "Mariana Trench", cat: "World" },
-  { q: "What is the largest desert in the world?", a: "Sahara Desert (hot desert)", cat: "World" },
-  { q: "Which country has the most natural lakes?", a: "Canada", cat: "World" },
-  { q: "What is the capital of Australia?", a: "Canberra", cat: "World" },
-  { q: "Which country has the most time zones?", a: "France (12 time zones)", cat: "World" },
-  { q: "What is the Amazon rainforest called?", a: "Lungs of the Earth", cat: "World" },
-  { q: "Which is the tallest waterfall in the world?", a: "Angel Falls, Venezuela", cat: "World" },
-  { q: "What is the capital of Brazil?", a: "Brasília", cat: "World" },
-  // WORLD - Science
-  { q: "What is the chemical symbol for Gold?", a: "Au", cat: "Science" },
-  { q: "How many bones are in the adult human body?", a: "206", cat: "Science" },
-  { q: "What is the speed of light?", a: "~3 × 10⁸ m/s (299,792,458 m/s)", cat: "Science" },
-  { q: "What planet is known as the Red Planet?", a: "Mars", cat: "Science" },
-  { q: "What is the hardest natural substance on Earth?", a: "Diamond", cat: "Science" },
-  { q: "Who developed the theory of relativity?", a: "Albert Einstein", cat: "Science" },
-  { q: "What gas do plants absorb during photosynthesis?", a: "Carbon Dioxide (CO₂)", cat: "Science" },
-  { q: "How many chromosomes does a human cell have?", a: "46 (23 pairs)", cat: "Science" },
-  { q: "What is the atomic number of Carbon?", a: "6", cat: "Science" },
-  { q: "Who invented the telephone?", a: "Alexander Graham Bell", cat: "Science" },
-  { q: "What is the full form of DNA?", a: "Deoxyribonucleic Acid", cat: "Science" },
-  { q: "Which planet has the most moons?", a: "Saturn (146 moons)", cat: "Science" },
-  { q: "What is the boiling point of water at sea level?", a: "100°C (212°F)", cat: "Science" },
-  { q: "Who discovered Penicillin?", a: "Alexander Fleming", cat: "Science" },
-  { q: "What is the powerhouse of the cell?", a: "Mitochondria", cat: "Science" },
-  // WORLD - History
-  { q: "In which year did World War II end?", a: "1945", cat: "History" },
-  { q: "Who was the first person to walk on the moon?", a: "Neil Armstrong (1969)", cat: "History" },
-  { q: "In which year did the Berlin Wall fall?", a: "1989", cat: "History" },
-  { q: "Who was the first woman to win a Nobel Prize?", a: "Marie Curie (1903)", cat: "History" },
-  { q: "Which empire was known as the 'Empire on which the sun never sets'?", a: "British Empire", cat: "History" },
-  { q: "In which year did the French Revolution begin?", a: "1789", cat: "History" },
-  { q: "Who invented the printing press?", a: "Johannes Gutenberg", cat: "History" },
-  { q: "What was the first country to give women the right to vote?", a: "New Zealand (1893)", cat: "History" },
-  { q: "Who was the ancient Greek god of the sea?", a: "Poseidon", cat: "History" },
-  { q: "In which year did Christopher Columbus reach America?", a: "1492", cat: "History" },
-  // SPORTS
-  { q: "How many players are in a cricket team?", a: "11", cat: "Sports" },
-  { q: "Which country has won the most FIFA World Cups?", a: "Brazil (5 times)", cat: "Sports" },
-  { q: "How many rings are in the Olympic flag?", a: "5", cat: "Sports" },
-  { q: "Who holds the record for most Test cricket centuries?", a: "Sachin Tendulkar (100 centuries)", cat: "Sports" },
-  { q: "In which year did India win its first Cricket World Cup?", a: "1983", cat: "Sports" },
-  { q: "Which country hosted the 2020 Summer Olympics?", a: "Japan (Tokyo)", cat: "Sports" },
-  { q: "How many Grand Slam tournaments are there in tennis?", a: "4", cat: "Sports" },
-  { q: "Who is known as the 'God of Cricket'?", a: "Sachin Tendulkar", cat: "Sports" },
-  { q: "In which sport is the 'Davis Cup' awarded?", a: "Tennis", cat: "Sports" },
-  { q: "How long is a standard marathon race?", a: "42.195 km (26.2 miles)", cat: "Sports" },
-  // TECH & ECONOMY
-  { q: "What does 'www' stand for?", a: "World Wide Web", cat: "Tech" },
-  { q: "Who founded Microsoft?", a: "Bill Gates & Paul Allen", cat: "Tech" },
-  { q: "What is the full form of CPU?", a: "Central Processing Unit", cat: "Tech" },
-  { q: "Who invented the World Wide Web?", a: "Tim Berners-Lee", cat: "Tech" },
-  { q: "What does 'HTTP' stand for?", a: "HyperText Transfer Protocol", cat: "Tech" },
-  { q: "Which company created the Android operating system?", a: "Google", cat: "Tech" },
-  { q: "What does 'AI' stand for?", a: "Artificial Intelligence", cat: "Tech" },
-  { q: "Who founded Apple Inc.?", a: "Steve Jobs, Steve Wozniak, Ronald Wayne", cat: "Tech" },
-  { q: "What is the full form of RAM?", a: "Random Access Memory", cat: "Tech" },
-  { q: "In which year was Facebook founded?", a: "2004", cat: "Tech" },
-  // ARTS & CULTURE
-  { q: "Who painted the Mona Lisa?", a: "Leonardo da Vinci", cat: "Arts" },
-  { q: "Who wrote 'Romeo and Juliet'?", a: "William Shakespeare", cat: "Arts" },
-  { q: "Which musical instrument has 88 keys?", a: "Piano", cat: "Arts" },
-  { q: "Who is the author of 'Harry Potter'?", a: "J.K. Rowling", cat: "Arts" },
-  { q: "What is the national dance of India?", a: "Bharatanatyam", cat: "Arts" },
-  { q: "Who wrote 'The Discovery of India'?", a: "Jawaharlal Nehru", cat: "Arts" },
-  { q: "Which is the oldest language in the world?", a: "Sanskrit (considered one of the oldest)", cat: "Arts" },
-  { q: "Who wrote 'War and Peace'?", a: "Leo Tolstoy", cat: "Arts" },
-  { q: "In which country did the Olympics originate?", a: "Greece (Ancient Olympics)", cat: "Arts" },
-  { q: "Who composed 'Ode to Joy'?", a: "Ludwig van Beethoven", cat: "Arts" },
-  // ENVIRONMENT
-  { q: "What percentage of Earth's surface is covered by water?", a: "About 71%", cat: "Environment" },
-  { q: "Which gas makes up most of Earth's atmosphere?", a: "Nitrogen (~78%)", cat: "Environment" },
-  { q: "What is the largest rainforest in the world?", a: "Amazon Rainforest", cat: "Environment" },
-  { q: "How many layers does the Earth's atmosphere have?", a: "5 (Troposphere, Stratosphere, Mesosphere, Thermosphere, Exosphere)", cat: "Environment" },
-  { q: "What causes the seasons on Earth?", a: "Earth's axial tilt (23.5°)", cat: "Environment" },
-  { q: "What is the Ozone Layer?", a: "A region of Earth's stratosphere absorbing UV radiation", cat: "Environment" },
-  { q: "Which is the most abundant metal in Earth's crust?", a: "Aluminum", cat: "Environment" },
-  { q: "What is carbon footprint?", a: "Total greenhouse gases produced by human activities", cat: "Environment" },
-  { q: "Which country emits the most CO₂ in the world?", a: "China", cat: "Environment" },
-  { q: "What is the Kyoto Protocol?", a: "An international treaty to reduce greenhouse gas emissions", cat: "Environment" },
-  // INDIA - Misc Pinpoints
-  { q: "How many states are there in India?", a: "28 States + 8 Union Territories", cat: "India" },
-  { q: "What is the PIN code of New Delhi (Parliament Street)?", a: "110001", cat: "India" },
-  { q: "Which is the longest national highway in India?", a: "NH 44 (Srinagar to Kanyakumari)", cat: "India" },
-  { q: "What is the national emblem of India?", a: "Lion Capital of Ashoka (Sarnath)", cat: "India" },
-  { q: "Which district has the highest literacy rate in India?", a: "Serchhip, Mizoram", cat: "India" },
-  { q: "What is the Preamble of India?", a: "Introduction to the Constitution stating India is Sovereign, Socialist, Secular, Democratic Republic", cat: "India" },
-  { q: "Which Indian state is known as 'God's Own Country'?", a: "Kerala", cat: "India" },
-  { q: "What is the ISD code of India?", a: "+91", cat: "India" },
-  { q: "Which city is known as the 'City of Joy'?", a: "Kolkata", cat: "India" },
-  { q: "How many languages are in the 8th Schedule of Indian Constitution?", a: "22", cat: "India" },
-  { q: "Who is known as the 'Iron Man of India'?", a: "Sardar Vallabhbhai Patel", cat: "India" },
-  { q: "What is the national aquatic animal of India?", a: "River Dolphin (Gangetic Dolphin)", cat: "India" },
-  { q: "What is the national heritage animal of India?", a: "Elephant", cat: "India" },
-  { q: "Which is the first state formed on a linguistic basis in India?", a: "Andhra Pradesh (1953)", cat: "India" },
-  { q: "What is the name of India's parliament building?", a: "Sansad Bhavan (Parliament House)", cat: "India" },
+  { q: "What is the national animal of India?", options: ["Snow Leopard", "Bengal Tiger", "Indian Lion", "One-horned Rhino"], correct: 1, cat: "India" },
+  { q: "Which is the longest river in India?", options: ["Yamuna", "Brahmaputra", "Ganga (Ganges)", "Godavari"], correct: 2, cat: "India" },
+  { q: "What is the capital of India?", options: ["Mumbai", "Kolkata", "Chennai", "New Delhi"], correct: 3, cat: "India" },
+  { q: "Which state has the largest area in India?", options: ["Madhya Pradesh", "Rajasthan", "Maharashtra", "Uttar Pradesh"], correct: 1, cat: "India" },
+  { q: "What is the national bird of India?", options: ["Indian Robin", "Sarus Crane", "Indian Peacock", "Great Hornbill"], correct: 2, cat: "India" },
+  { q: "Which is the highest peak in India?", options: ["Nanda Devi", "K2", "Kangchenjunga", "Siachen Peak"], correct: 2, cat: "India" },
+  { q: "What is the national flower of India?", options: ["Marigold", "Rose", "Jasmine", "Lotus"], correct: 3, cat: "India" },
+  { q: "Which city is known as the Pink City of India?", options: ["Jodhpur", "Jaipur", "Udaipur", "Bikaner"], correct: 1, cat: "India" },
+  { q: "What is the national fruit of India?", options: ["Banana", "Jackfruit", "Guava", "Mango"], correct: 3, cat: "India" },
+  { q: "Which is the smallest state of India by area?", options: ["Sikkim", "Tripura", "Goa", "Nagaland"], correct: 2, cat: "India" },
+  { q: "Which Indian state has the longest coastline?", options: ["Kerala", "Tamil Nadu", "Andhra Pradesh", "Gujarat"], correct: 3, cat: "India" },
+  { q: "Which city is called the 'Silicon Valley of India'?", options: ["Hyderabad", "Pune", "Bengaluru", "Chennai"], correct: 2, cat: "India" },
+  { q: "Who is called the 'Father of the Nation' of India?", options: ["Jawaharlal Nehru", "Sardar Patel", "Mahatma Gandhi", "B.R. Ambedkar"], correct: 2, cat: "India" },
+  { q: "Who was the first Prime Minister of India?", options: ["Sardar Patel", "Jawaharlal Nehru", "Lal Bahadur Shastri", "Indira Gandhi"], correct: 1, cat: "India" },
+  { q: "Who was the first President of India?", options: ["S. Radhakrishnan", "Zakir Husain", "Dr. Rajendra Prasad", "V.V. Giri"], correct: 2, cat: "India" },
+  { q: "In which year did India gain independence?", options: ["1945", "1947", "1948", "1950"], correct: 1, cat: "India" },
+  { q: "Who wrote the Indian National Anthem 'Jana Gana Mana'?", options: ["Bankim Chandra", "Rabindranath Tagore", "Sarojini Naidu", "Subhas Chandra Bose"], correct: 1, cat: "India" },
+  { q: "Who was the first female Prime Minister of India?", options: ["Pratibha Patil", "Sushma Swaraj", "Smriti Irani", "Indira Gandhi"], correct: 3, cat: "India" },
+  { q: "India's first satellite was named?", options: ["Bhaskara", "Rohini", "Aryabhata", "Apple"], correct: 2, cat: "India" },
+  { q: "Who is known as the 'Missile Man of India'?", options: ["Vikram Sarabhai", "Homi Bhabha", "Dr. A.P.J. Abdul Kalam", "K. Sivan"], correct: 2, cat: "India" },
+  { q: "What is the largest continent in the world?", options: ["Africa", "Asia", "Europe", "North America"], correct: 1, cat: "World" },
+  { q: "Which is the longest river in the world?", options: ["Amazon", "Yangtze", "Nile River", "Mississippi"], correct: 2, cat: "World" },
+  { q: "What is the highest mountain in the world?", options: ["K2", "Mount Everest", "Kangchenjunga", "Lhotse"], correct: 1, cat: "World" },
+  { q: "Which is the largest ocean in the world?", options: ["Atlantic Ocean", "Indian Ocean", "Arctic Ocean", "Pacific Ocean"], correct: 3, cat: "World" },
+  { q: "What is the smallest country in the world?", options: ["Monaco", "San Marino", "Vatican City", "Liechtenstein"], correct: 2, cat: "World" },
+  { q: "Which is the largest country by area?", options: ["Canada", "China", "USA", "Russia"], correct: 3, cat: "World" },
+  { q: "What is the capital of Australia?", options: ["Sydney", "Melbourne", "Canberra", "Brisbane"], correct: 2, cat: "World" },
+  { q: "Which is the tallest waterfall in the world?", options: ["Niagara Falls", "Iguazu Falls", "Angel Falls", "Victoria Falls"], correct: 2, cat: "World" },
+  { q: "What is the capital of Brazil?", options: ["Rio de Janeiro", "São Paulo", "Brasília", "Salvador"], correct: 2, cat: "World" },
+  { q: "Which country has the most time zones?", options: ["Russia", "USA", "China", "France"], correct: 3, cat: "World" },
+  { q: "What is the chemical symbol for Gold?", options: ["Go", "Gd", "Au", "Ag"], correct: 2, cat: "Science" },
+  { q: "How many bones are in the adult human body?", options: ["198", "206", "214", "220"], correct: 1, cat: "Science" },
+  { q: "What planet is known as the Red Planet?", options: ["Venus", "Jupiter", "Mars", "Saturn"], correct: 2, cat: "Science" },
+  { q: "What is the hardest natural substance on Earth?", options: ["Quartz", "Corundum", "Topaz", "Diamond"], correct: 3, cat: "Science" },
+  { q: "What gas do plants absorb during photosynthesis?", options: ["Oxygen", "Nitrogen", "Carbon Dioxide (CO₂)", "Hydrogen"], correct: 2, cat: "Science" },
+  { q: "What is the powerhouse of the cell?", options: ["Nucleus", "Ribosome", "Golgi body", "Mitochondria"], correct: 3, cat: "Science" },
+  { q: "Who developed the theory of relativity?", options: ["Isaac Newton", "Niels Bohr", "Albert Einstein", "Max Planck"], correct: 2, cat: "Science" },
+  { q: "What is the full form of DNA?", options: ["Deoxyribose Nucleic Acid", "Deoxyribonucleic Acid", "Dinucleotide Acid", "Double Nucleic Acid"], correct: 1, cat: "Science" },
+  { q: "Which planet has the most moons?", options: ["Jupiter", "Uranus", "Neptune", "Saturn"], correct: 3, cat: "Science" },
+  { q: "Who discovered Penicillin?", options: ["Louis Pasteur", "Robert Koch", "Alexander Fleming", "Joseph Lister"], correct: 2, cat: "Science" },
+  { q: "In which year did World War II end?", options: ["1943", "1944", "1945", "1946"], correct: 2, cat: "History" },
+  { q: "Who was the first person to walk on the moon?", options: ["Buzz Aldrin", "Neil Armstrong", "Yuri Gagarin", "Alan Shepard"], correct: 1, cat: "History" },
+  { q: "In which year did the Berlin Wall fall?", options: ["1985", "1987", "1989", "1991"], correct: 2, cat: "History" },
+  { q: "Who was the first woman to win a Nobel Prize?", options: ["Rosalind Franklin", "Lise Meitner", "Marie Curie", "Dorothy Hodgkin"], correct: 2, cat: "History" },
+  { q: "In which year did the French Revolution begin?", options: ["1776", "1783", "1789", "1799"], correct: 2, cat: "History" },
+  { q: "How many players are in a cricket team?", options: ["9", "10", "11", "12"], correct: 2, cat: "Sports" },
+  { q: "Which country has won the most FIFA World Cups?", options: ["Germany", "Argentina", "Italy", "Brazil"], correct: 3, cat: "Sports" },
+  { q: "How many rings are in the Olympic flag?", options: ["4", "5", "6", "7"], correct: 1, cat: "Sports" },
+  { q: "Who is known as the 'God of Cricket'?", options: ["Brian Lara", "Ricky Ponting", "Sachin Tendulkar", "Vivian Richards"], correct: 2, cat: "Sports" },
+  { q: "In which year did India win its first Cricket World Cup?", options: ["1979", "1983", "1987", "1992"], correct: 1, cat: "Sports" },
+  { q: "What does 'www' stand for?", options: ["World Wide Web", "Web World Wide", "Wide World Web", "World Web Wire"], correct: 0, cat: "Tech" },
+  { q: "Who founded Microsoft?", options: ["Steve Jobs", "Mark Zuckerberg", "Bill Gates & Paul Allen", "Larry Page"], correct: 2, cat: "Tech" },
+  { q: "Who invented the World Wide Web?", options: ["Bill Gates", "Steve Jobs", "Tim Berners-Lee", "Dennis Ritchie"], correct: 2, cat: "Tech" },
+  { q: "In which year was Facebook founded?", options: ["2002", "2003", "2004", "2005"], correct: 2, cat: "Tech" },
+  { q: "Who painted the Mona Lisa?", options: ["Michelangelo", "Raphael", "Leonardo da Vinci", "Botticelli"], correct: 2, cat: "Arts" },
+  { q: "Who wrote 'Romeo and Juliet'?", options: ["Charles Dickens", "William Shakespeare", "Jane Austen", "Homer"], correct: 1, cat: "Arts" },
+  { q: "Who is the author of 'Harry Potter'?", options: ["Roald Dahl", "C.S. Lewis", "J.R.R. Tolkien", "J.K. Rowling"], correct: 3, cat: "Arts" },
+  { q: "What percentage of Earth's surface is covered by water?", options: ["61%", "65%", "71%", "75%"], correct: 2, cat: "Environment" },
+  { q: "Which gas makes up most of Earth's atmosphere?", options: ["Oxygen", "Carbon Dioxide", "Nitrogen", "Argon"], correct: 2, cat: "Environment" },
+  { q: "What is the largest rainforest in the world?", options: ["Congo Rainforest", "Amazon Rainforest", "Daintree Rainforest", "Tongass"], correct: 1, cat: "Environment" },
+  { q: "How many states are there in India?", options: ["25 States", "26 States", "28 States", "30 States"], correct: 2, cat: "India" },
 ];
 
 const CURRENT_AFFAIRS = [
-  { q: "India's Chandrayaan-3 successfully landed on the moon's south pole in which year?", a: "2023 (August 23)", cat: "Current Affairs" },
-  { q: "Which country hosted the G20 Summit in 2023?", a: "India (New Delhi)", cat: "Current Affairs" },
-  { q: "India's UPI transactions crossed how many billion monthly transactions in 2024?", a: "Over 13 billion", cat: "Current Affairs" },
-  { q: "Which Indian startup became the first to be valued over $100 billion?", a: "Reliance Jio Platforms", cat: "Current Affairs" },
-  { q: "In 2024, India became the world's _ most populous country?", a: "Most populous (surpassing China)", cat: "Current Affairs" },
-  { q: "Which Indian athlete won gold at the 2024 Paris Olympics in Javelin Throw?", a: "Neeraj Chopra", cat: "Current Affairs" },
-  { q: "BRICS expanded in 2024 to include how many new members?", a: "6 new members (Egypt, Ethiopia, Iran, Saudi Arabia, UAE, Argentina)", cat: "Current Affairs" },
-  { q: "India's GDP growth rate projected for 2024-25 by IMF is approximately?", a: "~6.5-7%", cat: "Current Affairs" },
-  { q: "Which Indian city hosted the International Film Festival of India (IFFI) 2023?", a: "Goa (Panaji)", cat: "Current Affairs" },
-  { q: "What is the name of India's first indigenous aircraft carrier?", a: "INS Vikrant", cat: "Current Affairs" },
-  { q: "PM Vishwakarma scheme launched in 2023 targets which group?", a: "Traditional artisans and craftspeople", cat: "Current Affairs" },
-  { q: "India's first Semiconductor chip fabrication plant is being set up in which state?", a: "Gujarat", cat: "Current Affairs" },
-  { q: "The 'One Nation, One Election' concept in India proposes?", a: "Simultaneous elections for Lok Sabha and State Assemblies", cat: "Current Affairs" },
-  { q: "India's Digital Public Infrastructure 'India Stack' won recognition from which global body?", a: "United Nations / World Bank", cat: "Current Affairs" },
-  { q: "Who became the new Chief Justice of India in 2024?", a: "Justice Sanjiv Khanna", cat: "Current Affairs" },
+  { q: "Chandrayaan-3 landed on the moon's south pole in which year?", options: ["2021", "2022", "2023", "2024"], correct: 2, cat: "Current Affairs" },
+  { q: "Which country hosted the G20 Summit in 2023?", options: ["Japan", "USA", "India (New Delhi)", "Germany"], correct: 2, cat: "Current Affairs" },
+  { q: "Which Indian athlete won gold at 2024 Paris Olympics in Javelin Throw?", options: ["Bajrang Punia", "Neeraj Chopra", "Vinesh Phogat", "PV Sindhu"], correct: 1, cat: "Current Affairs" },
+  { q: "What is the name of India's first indigenous aircraft carrier?", options: ["INS Virat", "INS Vikramaditya", "INS Vikrant", "INS Sindhuraj"], correct: 2, cat: "Current Affairs" },
+  { q: "Who became the new Chief Justice of India in 2024?", options: ["Justice D.Y. Chandrachud", "Justice Sanjiv Khanna", "Justice N.V. Ramana", "Justice U.U. Lalit"], correct: 1, cat: "Current Affairs" },
+  { q: "India's first Semiconductor chip plant is being set up in which state?", options: ["Maharashtra", "Karnataka", "Gujarat", "Tamil Nadu"], correct: 2, cat: "Current Affairs" },
+  { q: "India's UPI crossed how many billion monthly transactions in 2024?", options: ["Over 5 billion", "Over 8 billion", "Over 10 billion", "Over 13 billion"], correct: 3, cat: "Current Affairs" },
 ];
 
-// ─────────────────────────────────────────────
-// NO-REPEAT DAILY QUESTION SYSTEM
-//
-// HOW IT WORKS — Zero repetition guaranteed:
-//
-//  1. seededRng(seed) → deterministic pseudo-random number generator
-//     Uses a simple LCG (Linear Congruential Generator) seeded by
-//     a number derived from the date. Same seed = same sequence,
-//     always. No Math.random() — fully reproducible.
-//
-//  2. shuffleWithSeed(array, seed) → Fisher-Yates shuffle driven by
-//     the seeded RNG. The ENTIRE question bank is shuffled into a
-//     fixed order for a given "epoch" (cycle number). Questions are
-//     then dealt out sequentially — day 1 gets positions 0-1,
-//     day 2 gets positions 2-3, etc. Only after ALL questions are
-//     exhausted does the order reset with a new epoch seed, ensuring
-//     the full bank is seen before ANY question repeats.
-//
-//  3. getDayIndex(date) → how many days since the app epoch
-//     (Jan 1 2025). Used to calculate which "slot" in the shuffled
-//     deck today corresponds to.
-//
-//  4. getEpochAndSlot(dayIndex, bankSize, questionsPerDay) →
-//     epoch = which full cycle we're in (bankSize/questionsPerDay days
-//     per epoch). slot = position within this epoch's shuffled deck.
-//     New epoch = new shuffle seed = new order, but still no repeats
-//     within an epoch.
-//
-//  5. Current Affairs rotates independently with its own shuffle,
-//     1 per day, same no-repeat guarantee.
-//
-//  RESULT: With 140 GK questions and 2/day → 70 days before any
-//  repeat. With 15 CA questions and 1/day → 15 days before repeat.
-//  After exhaustion, a new shuffled order begins (never same
-//  consecutive question).
-// ─────────────────────────────────────────────
-
-// Seeded LCG pseudo-random number generator
-// Returns a function that produces numbers in [0, 1)
+// ─── Seeded RNG ───
 function seededRng(seed) {
-  let s = seed >>> 0; // force unsigned 32-bit
-  return function () {
-    // Park-Miller LCG constants
-    s = Math.imul(1664525, s) + 1013904223 >>> 0;
-    return s / 4294967296;
-  };
+  let s = seed >>> 0;
+  return () => { s = Math.imul(1664525, s) + 1013904223 >>> 0; return s / 4294967296; };
 }
-
-// Fisher-Yates shuffle driven by a seeded RNG (pure, no side effects)
 function shuffleWithSeed(array, seed) {
-  const arr = array.map((item, i) => ({ item, i })); // keep original indices
+  const arr = [...array];
   const rng = seededRng(seed);
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
-  return arr.map(x => x.item);
+  return arr;
 }
-
-// Days elapsed since app epoch (Jan 1 2025) — same for every user
 const APP_EPOCH = new Date("2025-01-01T00:00:00Z");
 function getDayIndex(date = new Date()) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   return Math.floor((d - APP_EPOCH) / 86400000);
 }
-
-// Returns { epochIndex, slotStart } for a given day
-function getEpochAndSlot(dayIndex, bankSize, questionsPerDay) {
-  const daysPerEpoch = Math.floor(bankSize / questionsPerDay);
-  const epochIndex = Math.floor(dayIndex / daysPerEpoch);
-  const slotStart = (dayIndex % daysPerEpoch) * questionsPerDay;
-  return { epochIndex, slotStart };
+function getEpochAndSlot(dayIndex, bankSize, qpd) {
+  const dpe = Math.floor(bankSize / qpd);
+  return { epochIndex: Math.floor(dayIndex / dpe), slotStart: (dayIndex % dpe) * qpd };
 }
-
-// ── MAIN: Get 2 GK + 1 CA for a specific date, guaranteed no repeat
 function getDailyQuestions(date = new Date()) {
-  const dayIndex = getDayIndex(date);
-
-  // ── 2 GK questions ──
-  const GK_PER_DAY = 2;
-  const { epochIndex: gkEpoch, slotStart: gkSlot } = getEpochAndSlot(
-    dayIndex, GK_QUESTIONS.length, GK_PER_DAY
-  );
-  // Each epoch gets a unique seed so its shuffle order differs from other epochs
-  const gkSeed = (gkEpoch * 2654435761 + 1234567) >>> 0;
-  const shuffledGK = shuffleWithSeed(GK_QUESTIONS, gkSeed);
-  const gkQ1 = shuffledGK[gkSlot];
-  const gkQ2 = shuffledGK[gkSlot + 1];
-
-  // ── 1 Current Affairs question ──
-  const CA_PER_DAY = 1;
-  const { epochIndex: caEpoch, slotStart: caSlot } = getEpochAndSlot(
-    dayIndex, CURRENT_AFFAIRS.length, CA_PER_DAY
-  );
-  const caSeed = (caEpoch * 3141592653 + 9876543) >>> 0;
-  const shuffledCA = shuffleWithSeed(CURRENT_AFFAIRS, caSeed);
-  const caQ = shuffledCA[caSlot];
-
-  return [gkQ1, gkQ2, caQ];
+  const di = getDayIndex(date);
+  const { epochIndex: ge, slotStart: gs } = getEpochAndSlot(di, GK_QUESTIONS.length, 2);
+  const gkShuffled = shuffleWithSeed(GK_QUESTIONS, (ge * 2654435761 + 1234567) >>> 0);
+  const { epochIndex: ce, slotStart: cs } = getEpochAndSlot(di, CURRENT_AFFAIRS.length, 1);
+  const caShuffled = shuffleWithSeed(CURRENT_AFFAIRS, (ce * 3141592653 + 9876543) >>> 0);
+  return [gkShuffled[gs], gkShuffled[gs + 1], caShuffled[cs]];
 }
+function getDaysUntilSunday() { const d = new Date().getDay(); return d === 0 ? 0 : 7 - d; }
+function isSunday() { return new Date().getDay() === 0; }
 
-// ── Get 7 days of questions (21 total) for weekly review/test
-// Each day independently guaranteed non-repeating
-function getWeeklyQuestions() {
-  const questions = [];
-  const today = new Date();
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    getDailyQuestions(d).forEach(q => questions.push(q));
-  }
-  return questions; // 21 questions, each unique across 70-day GK cycle
-}
-
-// ─────────────────────────────────────────────
-// ICON COMPONENTS
-// ─────────────────────────────────────────────
-const BellIcon = ({ active }) => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
-    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-  </svg>
-);
-
-const TrophyIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <polyline points="8 21 12 21 16 21"/><line x1="12" y1="17" x2="12" y2="21"/>
-    <path d="M7 4H17L15 12H9L7 4Z"/><path d="M7 4H3V8C3 10.21 4.79 12 7 12"/>
-    <path d="M17 4H21V8C21 10.21 19.21 12 17 12"/>
-  </svg>
-);
-
-const FlameIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
-  </svg>
-);
-
-const BookIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-  </svg>
-);
-
-const CheckIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-    <polyline points="20 6 9 17 4 12"/>
-  </svg>
-);
-
-const XIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-  </svg>
-);
-
-const SparkleIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
-  </svg>
-);
-
-// ─────────────────────────────────────────────
-// AI QUESTION GENERATOR via Anthropic API
-// ─────────────────────────────────────────────
-async function generateAIQuestions() {
+// ─── AI MCQ Generator ───
+async function generateAIMCQQuestions() {
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
-        messages: [{
-          role: "user",
-          content: `Generate exactly 9 unique General Knowledge quiz questions covering India GK, world geography, science, and current affairs 2024. Return ONLY a JSON array, no markdown, no extra text. Format: [{"q":"question","a":"answer","cat":"category"}]. Make questions factual and educational.`
-        }]
+        model: "claude-sonnet-4-20250514", max_tokens: 5000,
+        messages: [{ role: "user", content: `Generate exactly 30 unique multiple-choice GK quiz questions covering India GK, world geography, science, history, sports, tech, current affairs 2024. Return ONLY a JSON array, no markdown. Format: [{"q":"question","options":["A","B","C","D"],"correct":0,"cat":"India","explanation":"one sentence"}]. Rules: correct is 0-indexed (0=A), all 4 options plausible, mix: 8 India, 5 World, 5 Science, 4 History, 3 Sports, 3 Tech, 2 Current Affairs.` }]
       })
     });
-    const data = await response.json();
+    const data = await r.json();
     const text = data.content?.[0]?.text || "[]";
-    const clean = text.replace(/```json|```/g, "").trim();
-    return JSON.parse(clean);
-  } catch {
-    return [];
-  }
+    return JSON.parse(text.replace(/```json|```/g, "").trim());
+  } catch { return []; }
 }
 
-// ─────────────────────────────────────────────
-// CATEGORY COLORS
-// ─────────────────────────────────────────────
-const CAT_COLORS = {
-  India: { bg: "#fff7ed", border: "#fed7aa", text: "#c2410c", dot: "#f97316" },
-  World: { bg: "#eff6ff", border: "#bfdbfe", text: "#1d4ed8", dot: "#3b82f6" },
-  Science: { bg: "#f0fdf4", border: "#bbf7d0", text: "#15803d", dot: "#22c55e" },
-  History: { bg: "#faf5ff", border: "#e9d5ff", text: "#7e22ce", dot: "#a855f7" },
-  Sports: { bg: "#fff1f2", border: "#fecdd3", text: "#be123c", dot: "#f43f5e" },
-  Tech: { bg: "#f0f9ff", border: "#bae6fd", text: "#0369a1", dot: "#0ea5e9" },
-  Arts: { bg: "#fdf4ff", border: "#f0abfc", text: "#86198f", dot: "#d946ef" },
-  Environment: { bg: "#f0fdf4", border: "#86efac", text: "#166534", dot: "#16a34a" },
-  "Current Affairs": { bg: "#fffbeb", border: "#fcd34d", text: "#92400e", dot: "#f59e0b" },
-  default: { bg: "#f8faff", border: "#e0e7ff", text: "#4338ca", dot: "#6366f1" },
+// ─── Colors ───
+const CATS = {
+  India: { bg: "#FFF3E0", border: "#FFCC80", text: "#BF360C", dot: "#FF6D00" },
+  World: { bg: "#E3F2FD", border: "#90CAF9", text: "#0D47A1", dot: "#1565C0" },
+  Science: { bg: "#E8F5E9", border: "#A5D6A7", text: "#1B5E20", dot: "#2E7D32" },
+  History: { bg: "#F3E5F5", border: "#CE93D8", text: "#4A148C", dot: "#6A1B9A" },
+  Sports: { bg: "#FCE4EC", border: "#F48FB1", text: "#880E4F", dot: "#AD1457" },
+  Tech: { bg: "#E1F5FE", border: "#81D4FA", text: "#01579B", dot: "#0277BD" },
+  Arts: { bg: "#FDE7F3", border: "#F48FB1", text: "#880E4F", dot: "#C2185B" },
+  Environment: { bg: "#E8F5E9", border: "#A5D6A7", text: "#1B5E20", dot: "#388E3C" },
+  "Current Affairs": { bg: "#FFFDE7", border: "#FFE082", text: "#E65100", dot: "#FF8F00" },
+  default: { bg: "#EDE7F6", border: "#B39DDB", text: "#311B92", dot: "#4527A0" },
+};
+const clr = (cat) => CATS[cat] || CATS.default;
+
+// ─── CONFETTI ───
+const Confetti = ({ active }) => {
+  if (!active) return null;
+  const cols = ["#4f46e5","#7c3aed","#ec4899","#f59e0b","#22c55e","#0ea5e9","#f43f5e"];
+  return (
+    <div style={{ position:"fixed",inset:0,pointerEvents:"none",zIndex:99998,overflow:"hidden" }}>
+      {Array.from({length:55}).map((_,i)=>(
+        <motion.div key={i}
+          initial={{ y:-20, x:`${(i/55)*100}vw`, rotate:0, opacity:1 }}
+          animate={{ y:"110vh", rotate:(Math.random()-0.5)*720, opacity:[1,1,0] }}
+          transition={{ duration:1.8+Math.random()*1.5, delay:Math.random()*0.6, ease:"easeIn" }}
+          style={{ position:"absolute", width:i%3===0?12:i%3===1?8:6, height:i%3===0?5:i%3===1?8:12, borderRadius:i%2===0?2:"50%", background:cols[i%cols.length] }}
+        />
+      ))}
+    </div>
+  );
 };
 
-const getCatStyle = (cat) => CAT_COLORS[cat] || CAT_COLORS.default;
+// ─── SCORE OVERLAY ───
+const ScoreOverlay = ({ score, total, onDone }) => {
+  const pct = total > 0 ? Math.round((score/total)*100) : 0;
+  const [count, setCount] = useState(0);
+  useEffect(()=>{
+    let n=0; const iv=setInterval(()=>{ n++; setCount(n); if(n>=pct) clearInterval(iv); },18);
+    const t=setTimeout(onDone, 4200);
+    return ()=>{ clearInterval(iv); clearTimeout(t); };
+  },[]);
+  const tier = pct>=80?{e:"🏆",l:"Outstanding!",c:"#059669"} : pct>=60?{e:"🎯",l:"Well Done!",c:"#D97706"} : {e:"📚",l:"Keep Practicing!",c:"#7C3AED"};
+  return (
+    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+      style={{position:"fixed",inset:0,zIndex:99999,background:"rgba(0,0,0,0.88)",backdropFilter:"blur(14px)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+      {[1,2,3].map(r=>(
+        <motion.div key={r} initial={{scale:0,opacity:0.5}} animate={{scale:r*3,opacity:0}} transition={{duration:1.3,delay:r*0.15}}
+          style={{position:"absolute",width:80,height:80,borderRadius:"50%",border:`2px solid ${tier.c}`}} />
+      ))}
+      <motion.div initial={{scale:0,rotate:-180}} animate={{scale:1,rotate:0}}
+        transition={{type:"spring",stiffness:180,damping:14,delay:0.3}}
+        style={{width:148,height:148,borderRadius:"50%",background:`linear-gradient(135deg,${tier.c}22,${tier.c}44)`,border:`3px solid ${tier.c}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",marginBottom:28,boxShadow:`0 0 70px ${tier.c}66`}}>
+        <div style={{fontSize:42}}>{tier.e}</div>
+        <div style={{color:"#fff",fontWeight:900,fontSize:28,fontFamily:"monospace"}}>{count}%</div>
+      </motion.div>
+      <motion.div initial={{y:20,opacity:0}} animate={{y:0,opacity:1}} transition={{delay:0.7}} style={{textAlign:"center"}}>
+        <div style={{color:"#fff",fontSize:26,fontWeight:800,marginBottom:6}}>{tier.l}</div>
+        <div style={{color:"rgba(255,255,255,0.55)",fontSize:15}}>{score} of {total} questions correct</div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// ─── PROCTORING BAR ───
+const ProctoringBar = ({timeLeft,totalTime,current,total})=>{
+  const m=String(Math.floor(timeLeft/60)).padStart(2,"0"), s=String(timeLeft%60).padStart(2,"0");
+  const pct=(timeLeft/totalTime)*100; const urg=timeLeft<300;
+  return (
+    <div style={{position:"fixed",top:0,left:0,right:0,zIndex:9999,background:"#0f172a",borderBottom:"1px solid #1e293b",height:50,display:"flex",alignItems:"center",gap:10,padding:"0 14px"}}>
+      <div style={{color:"#6366f1",fontWeight:800,fontSize:13,whiteSpace:"nowrap",letterSpacing:0.5}}>◆ GK PULSE</div>
+      <div style={{flex:1,height:5,background:"rgba(255,255,255,0.07)",borderRadius:50,overflow:"hidden"}}>
+        <motion.div style={{height:"100%",background:urg?"linear-gradient(90deg,#ef4444,#f87171)":"linear-gradient(90deg,#4f46e5,#7c3aed)",borderRadius:50}} animate={{width:`${pct}%`}} transition={{duration:1}}/>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:4,background:urg?"rgba(239,68,68,0.15)":"rgba(255,255,255,0.06)",border:`1px solid ${urg?"#ef444430":"#ffffff15"}`,borderRadius:7,padding:"3px 9px",color:urg?"#f87171":"#e2e8f0",fontWeight:800,fontSize:13,fontFamily:"monospace"}}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        {m}:{s}
+      </div>
+      <div style={{color:"rgba(255,255,255,0.35)",fontSize:11,whiteSpace:"nowrap"}}>{current}/{total}</div>
+      <div style={{display:"flex",alignItems:"center",gap:3}}>
+        <motion.div animate={{opacity:[1,0.3,1]}} transition={{repeat:Infinity,duration:2}} style={{width:6,height:6,borderRadius:"50%",background:"#4ade80"}}/>
+        <span style={{color:"#4ade80",fontSize:10,fontWeight:700}}>LIVE</span>
+      </div>
+      <div style={{background:"rgba(239,68,68,0.12)",border:"1px solid rgba(239,68,68,0.35)",color:"#f87171",padding:"2px 7px",borderRadius:5,fontSize:10,fontWeight:800,whiteSpace:"nowrap"}}>🔴 PROCTORED</div>
+    </div>
+  );
+};
+
+// ─── OPTION BUTTON ───
+const Opt = ({label,text,selected,correct,wrong,onClick,disabled})=>(
+  <motion.button whileTap={!disabled?{scale:0.97}:{}} onClick={onClick}
+    style={{
+      width:"100%",padding:"13px 15px",borderRadius:13,border:"none",cursor:disabled?"default":"pointer",
+      background: wrong?"#FEE2E2":correct?"#DCFCE7":selected?"#EEF2FF":"#F8FAFF",
+      outline: wrong?"2px solid #EF4444":correct?"2px solid #22C55E":selected?"2px solid #4F46E5":"2px solid #E8ECF4",
+      display:"flex",alignItems:"center",gap:11,textAlign:"left",
+      transition:"all 0.15s",fontFamily:"'DM Sans',sans-serif",
+      boxShadow: selected&&!wrong&&!correct?"0 3px 14px rgba(79,70,229,0.17)":"0 1px 3px rgba(0,0,0,0.04)",
+    }}>
+    <span style={{width:28,height:28,borderRadius:"50%",flexShrink:0,background:wrong?"#EF4444":correct?"#22C55E":selected?"#4F46E5":"#E8ECF4",color:(selected||correct||wrong)?"#fff":"#64748B",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:11,transition:"all 0.15s"}}>
+      {label}
+    </span>
+    <span style={{fontWeight:selected?700:500,fontSize:14,color:wrong?"#991B1B":correct?"#166534":selected?"#312E81":"#1E293B",lineHeight:1.4,flex:1}}>
+      {text}
+    </span>
+    {(correct||wrong)&&<span style={{marginLeft:"auto",fontSize:15}}>{correct?"✅":"❌"}</span>}
+  </motion.button>
+);
+
+// ─── NOTIFICATION MODAL ───
+const NotifModal = ({onAllow,onDeny})=>(
+  <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+    style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,0.5)",backdropFilter:"blur(8px)",display:"flex",alignItems:"center",justifyContent:"center",padding:"0 16px"}}>
+    <motion.div initial={{scale:0.88,y:24}} animate={{scale:1,y:0}} exit={{scale:0.88,y:24}}
+      style={{background:"#fff",borderRadius:24,padding:"28px 24px",maxWidth:360,width:"100%",textAlign:"center",boxShadow:"0 24px 80px rgba(0,0,0,0.18)"}}>
+      <motion.div animate={{rotate:[-5,5,-5,5,0]}} transition={{duration:0.6,delay:0.3}}
+        style={{width:68,height:68,borderRadius:"50%",background:"linear-gradient(135deg,#4f46e5,#7c3aed)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 18px",fontSize:30,boxShadow:"0 8px 24px rgba(79,70,229,0.35)"}}>
+        🔔
+      </motion.div>
+      <h3 style={{fontFamily:"'Sora',sans-serif",fontSize:19,fontWeight:800,color:"#0F172A",margin:"0 0 10px"}}>Daily Brain Boost</h3>
+      <p style={{color:"#64748B",fontSize:13.5,lineHeight:1.65,margin:"0 0 20px"}}>
+        Get <strong>3 fresh GK questions</strong> every morning at <strong>6:00 AM</strong> — just like Duolingo. Build your knowledge streak! 🧠
+      </p>
+      <div style={{background:"#F8FAFF",border:"1.5px solid #E2E8F0",borderRadius:12,padding:"11px 14px",marginBottom:20,display:"flex",gap:10,textAlign:"left"}}>
+        {["📅 Daily at 6 AM","🧠 3 new questions","🔕 Cancel anytime"].map((t,i)=>(
+          <div key={i} style={{flex:1,textAlign:"center",fontSize:11,color:"#64748B",fontWeight:600,lineHeight:1.4}}>{t}</div>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:10}}>
+        <button onClick={onDeny} style={{flex:1,padding:"12px",borderRadius:12,border:"1.5px solid #E2E8F0",background:"#F8FAFF",color:"#64748B",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>
+          Not Now
+        </button>
+        <button onClick={onAllow} style={{flex:2,padding:"12px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#4F46E5,#7C3AED)",color:"#fff",fontWeight:800,fontSize:13,cursor:"pointer",boxShadow:"0 4px 14px rgba(79,70,229,0.4)",fontFamily:"'DM Sans',sans-serif"}}>
+          Allow 🔔
+        </button>
+      </div>
+    </motion.div>
+  </motion.div>
+);
 
 // ─────────────────────────────────────────────
 // MAIN COMPONENT
 // ─────────────────────────────────────────────
-const GKDailyNotifications = () => {
+export default function GKDailyNotifications() {
   const [sessionUser, setSessionUser] = useState(null);
-  const [prefs, setPrefs] = useState(null);
   const [notifEnabled, setNotifEnabled] = useState(false);
-  const [todayQuestions, setTodayQuestions] = useState([]);
-  const [revealed, setRevealed] = useState({});
-  const [activeTab, setActiveTab] = useState("today"); // today | weekly | test
-  const [weeklyQuestions, setWeeklyQuestions] = useState([]);
-  const [testQuestions, setTestQuestions] = useState([]);
-  const [testAnswers, setTestAnswers] = useState({});
+  const [showNotifModal, setShowNotifModal] = useState(false);
+  const [todayQs, setTodayQs] = useState([]);
+  const [todayAns, setTodayAns] = useState({});
+  const [todaySubmitted, setTodaySubmitted] = useState(false);
+  const [todayScore, setTodayScore] = useState(null);
+  const [activeTab, setActiveTab] = useState("today");
+  const [testQs, setTestQs] = useState([]);
+  const [testAns, setTestAns] = useState({});
   const [testSubmitted, setTestSubmitted] = useState(false);
   const [testScore, setTestScore] = useState(null);
-  const [streak, setStreak] = useState(0);
   const [scores, setScores] = useState([]);
   const [loadingAI, setLoadingAI] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [permissionState, setPermissionState] = useState("default");
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(45*60);
+  const [curQ, setCurQ] = useState(0);
+  const [showOverlay, setShowOverlay] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [overlayData, setOverlayData] = useState({score:0,total:0});
   const [notifSupported, setNotifSupported] = useState(true);
+  const timerRef = useRef(null);
+  const daysLeft = getDaysUntilSunday();
+  const todayIsSunday = isSunday();
 
-  // ── Init ──
-  useEffect(() => {
-    const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+  useEffect(()=>{
+    setNotifSupported("Notification" in window);
+    setTodayQs(getDailyQuestions());
+    const init = async()=>{
+      const {data:{user}} = await supabase.auth.getUser();
       setSessionUser(user);
-      if (!user) { setIsLoading(false); return; }
-
-      // Load prefs
-      const { data: p } = await supabase.from("gk_prefs").select("*").eq("user_id", user.id).single();
-      if (p) {
-        setPrefs(p);
-        setNotifEnabled(p.notifications_enabled);
-        setStreak(p.streak || 0);
+      if (!user){setIsLoading(false);return;}
+      const {data:p} = await supabase.from("gk_prefs").select("*").eq("user_id",user.id).single();
+      if(p) setNotifEnabled(p.notifications_enabled||false);
+      const {data:sc} = await supabase.from("gk_scores").select("*").eq("user_id",user.id).order("taken_at",{ascending:false}).limit(20);
+      if(sc) setScores(sc);
+      const today = new Date().toISOString().split("T")[0];
+      const {data:ds} = await supabase.from("gk_daily_seen").select("answers,score").eq("user_id",user.id).eq("seen_date",today).single();
+      if(ds){
+        setTodaySubmitted(true);
+        setTodayScore(ds.score);
+        if(ds.answers) try{setTodayAns(JSON.parse(ds.answers));}catch{}
       }
-
-      // Load scores
-      const { data: sc } = await supabase
-        .from("gk_scores").select("*").eq("user_id", user.id)
-        .order("taken_at", { ascending: false }).limit(10);
-      if (sc) setScores(sc);
-
       setIsLoading(false);
     };
-
-    if (!("Notification" in window)) setNotifSupported(false);
-    else setPermissionState(Notification.permission);
-
-    setTodayQuestions(getDailyQuestions());
-    setWeeklyQuestions(getWeeklyQuestions());
     init();
-  }, []);
+  },[]);
 
-  // ── Toggle Notifications ──
-  const handleToggleNotif = async () => {
-    if (!sessionUser) { toast.error("Please log in first"); return; }
+  // Timer
+  useEffect(()=>{
+    if(isFullscreen && !testSubmitted){
+      timerRef.current = setInterval(()=>{
+        setTimeLeft(t=>{ if(t<=1){clearInterval(timerRef.current);handleSubmitTest(true);return 0;} return t-1;});
+      },1000);
+    }
+    return ()=>clearInterval(timerRef.current);
+  },[isFullscreen,testSubmitted]);
 
-    if (!notifEnabled) {
-      // Request permission
-      if (!notifSupported) { toast.error("Push notifications not supported in this browser"); return; }
-      const perm = await Notification.requestPermission();
-      setPermissionState(perm);
-      if (perm !== "granted") { toast.error("Please allow notifications in your browser settings"); return; }
+  // Tab-switch guard
+  useEffect(()=>{
+    if(!isFullscreen) return;
+    const h=()=>toast.error("⚠️ Do not switch tabs during the exam!",{duration:2500});
+    window.addEventListener("blur",h);
+    return ()=>window.removeEventListener("blur",h);
+  },[isFullscreen]);
 
-      // Schedule service worker
-      await registerNotifServiceWorker();
-      await upsertPrefs(sessionUser.id, true);
-      setNotifEnabled(true);
-      toast.success("🔔 Daily GK notifications enabled! You'll get 3 questions every morning at 6 AM.");
-    } else {
-      await upsertPrefs(sessionUser.id, false);
+  // ─── Notifications ───
+  const handleToggleNotif = ()=>{
+    if(!sessionUser){toast.error("Please log in first");return;}
+    if(!notifEnabled) setShowNotifModal(true);
+    else{
+      supabase.from("gk_prefs").upsert({user_id:sessionUser.id,notifications_enabled:false,updated_at:new Date().toISOString()},{onConflict:"user_id"});
       setNotifEnabled(false);
-      toast("🔕 Notifications turned off", { icon: "ℹ️" });
+      toast("🔕 Notifications disabled",{icon:"ℹ️"});
     }
   };
 
-  const upsertPrefs = async (userId, enabled) => {
-    await supabase.from("gk_prefs").upsert({
-      user_id: userId,
-      notifications_enabled: enabled,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: "user_id" });
-  };
-
-  const registerNotifServiceWorker = async () => {
-    if ("serviceWorker" in navigator) {
-      try {
-        await navigator.serviceWorker.register("/gk-sw.js");
-        // Schedule daily check
-        if ("periodicSync" in (await navigator.serviceWorker.ready)) {
-          await (await navigator.serviceWorker.ready).periodicSync.register("daily-gk", { minInterval: 24 * 60 * 60 * 1000 });
-        }
-      } catch (e) {
-        console.log("SW registration note:", e);
-      }
+  const doAllowNotif = async()=>{
+    setShowNotifModal(false);
+    if(!notifSupported){toast.error("Not supported in this browser");return;}
+    const perm = await Notification.requestPermission();
+    if(perm!=="granted"){
+      toast.error("Permission denied — enable in browser Settings → Notifications",{duration:4500});
+      return;
     }
-  };
-
-  // ── Reveal Answer ──
-  const revealAnswer = (idx) => setRevealed(r => ({ ...r, [idx]: true }));
-
-  // ── Mark Today Seen & Update Streak ──
-  const markTodaySeen = async () => {
-    if (!sessionUser) return;
-    const today = new Date().toISOString().split("T")[0];
-    const { data: existing } = await supabase.from("gk_daily_seen")
-      .select("id").eq("user_id", sessionUser.id).eq("seen_date", today).single();
-    if (!existing) {
-      await supabase.from("gk_daily_seen").insert({ user_id: sessionUser.id, seen_date: today });
-      const newStreak = streak + 1;
-      setStreak(newStreak);
-      await supabase.from("gk_prefs").upsert({ user_id: sessionUser.id, streak: newStreak }, { onConflict: "user_id" });
-      toast.success(`🔥 Streak: ${newStreak} day${newStreak > 1 ? "s" : ""}! Keep it up!`);
+    if("serviceWorker" in navigator){
+      try{
+        const reg = await navigator.serviceWorker.register("/gk-sw.js");
+        if("periodicSync" in reg) await reg.periodicSync.register("daily-gk-6am",{minInterval:24*60*60*1000});
+      }catch(e){console.log("SW:",e);}
     }
-  };
-
-  useEffect(() => {
-    if (Object.keys(revealed).length === todayQuestions.length && todayQuestions.length > 0) {
-      markTodaySeen();
-    }
-  }, [revealed]);
-
-  // ── Weekly Test ──
-  const startWeeklyTest = async () => {
-    setActiveTab("test");
-    setTestSubmitted(false);
-    setTestAnswers({});
-    setTestScore(null);
-    setLoadingAI(true);
-    const weekly = getWeeklyQuestions();
-    const aiQs = await generateAIQuestions();
-    setTestQuestions([...weekly, ...aiQs.slice(0, 9)]);
-    setLoadingAI(false);
-  };
-
-  const submitTest = async () => {
-    let correct = 0;
-    testQuestions.forEach((q, i) => {
-      if (testAnswers[i] !== undefined && testAnswers[i] === i) correct++;
-    });
-    // For MCQ-less test, score = number of self-reported correct
-    const selfReported = Object.values(testAnswers).filter(Boolean).length;
-    const total = testQuestions.length;
-    const pct = Math.round((selfReported / total) * 100);
-    setTestScore({ correct: selfReported, total, pct });
-    setTestSubmitted(true);
-
-    if (sessionUser) {
-      await supabase.from("gk_scores").insert({
-        user_id: sessionUser.id,
-        score: selfReported,
-        total,
-        percentage: pct,
-        taken_at: new Date().toISOString()
+    // Immediate welcome notification
+    if(Notification.permission==="granted"){
+      new Notification("🔔 Knowledge Pulse",{
+        body:"3 GK questions every morning at 6 AM. Starting tomorrow!",
+        icon:"/icons/icon-192.png",
+        badge:"/icons/icon-72.png",
       });
-      const { data: sc } = await supabase.from("gk_scores").select("*").eq("user_id", sessionUser.id)
-        .order("taken_at", { ascending: false }).limit(10);
-      if (sc) setScores(sc);
+    }
+    await supabase.from("gk_prefs").upsert({user_id:sessionUser.id,notifications_enabled:true,updated_at:new Date().toISOString()},{onConflict:"user_id"});
+    setNotifEnabled(true);
+    toast.success("🔔 Daily 6 AM notifications enabled!",{duration:3000});
+  };
+
+  // ─── Today MCQ ───
+  const selectTodayAns = (qi,oi)=>{ if(todaySubmitted) return; setTodayAns(a=>({...a,[qi]:oi})); };
+
+  const submitTodayQuiz = async()=>{
+    if(Object.keys(todayAns).length<todayQs.length){toast.error("Answer all 3 questions first! 📝");return;}
+    let correct=0;
+    todayQs.forEach((q,i)=>{ if(todayAns[i]===q.correct) correct++; });
+    const score={correct,total:todayQs.length,pct:Math.round((correct/todayQs.length)*100)};
+    setTodayScore(score); setTodaySubmitted(true);
+    setOverlayData({score:correct,total:todayQs.length});
+    setShowOverlay(true);
+    setShowConfetti(correct>0);
+    setTimeout(()=>setShowConfetti(false),3200);
+    if(sessionUser){
+      const today=new Date().toISOString().split("T")[0];
+      await supabase.from("gk_daily_seen").upsert({user_id:sessionUser.id,seen_date:today,answers:JSON.stringify(todayAns),score},{onConflict:["user_id","seen_date"]});
+      await supabase.from("gk_scores").insert({user_id:sessionUser.id,score:correct,total:todayQs.length,percentage:score.pct,type:"daily",taken_at:new Date().toISOString()});
+      const {data:sc}=await supabase.from("gk_scores").select("*").eq("user_id",sessionUser.id).order("taken_at",{ascending:false}).limit(20);
+      if(sc) setScores(sc);
     }
   };
 
-  // ─── STYLES ───
-  const styles = {
-    page: {
-      minHeight: "100vh",
-      background: "linear-gradient(135deg, #0f0c29 0%, #11102e 50%, #1a1a3e 100%)",
-      padding: "32px 16px 60px",
-      fontFamily: "'DM Sans', sans-serif",
-    },
-    card: {
-      background: "rgba(255,255,255,0.04)",
-      border: "1px solid rgba(255,255,255,0.1)",
-      borderRadius: "24px",
-      backdropFilter: "blur(20px)",
-      padding: "28px",
-      marginBottom: "20px",
-    },
-    qCard: (cat) => {
-      const s = getCatStyle(cat);
-      return {
-        background: s.bg,
-        border: `1.5px solid ${s.border}`,
-        borderRadius: "20px",
-        padding: "22px",
-        marginBottom: "16px",
-        position: "relative",
-        overflow: "hidden",
-      };
-    },
-    tabBtn: (active) => ({
-      padding: "10px 22px",
-      borderRadius: "50px",
-      border: "none",
-      fontWeight: 700,
-      fontSize: "13px",
-      cursor: "pointer",
-      transition: "all 0.2s",
-      background: active ? "rgba(99,102,241,0.9)" : "rgba(255,255,255,0.08)",
-      color: active ? "#fff" : "rgba(255,255,255,0.6)",
-      boxShadow: active ? "0 4px 15px rgba(99,102,241,0.4)" : "none",
-    }),
-    toggleTrack: (on) => ({
-      width: "56px", height: "28px",
-      background: on ? "linear-gradient(135deg,#6366f1,#8b5cf6)" : "rgba(255,255,255,0.15)",
-      borderRadius: "50px",
-      position: "relative",
-      cursor: "pointer",
-      transition: "background 0.3s",
-      border: "none",
-      flexShrink: 0,
-    }),
-    toggleThumb: (on) => ({
-      position: "absolute",
-      top: "4px",
-      left: on ? "31px" : "4px",
-      width: "20px", height: "20px",
-      borderRadius: "50%",
-      background: "#fff",
-      transition: "left 0.3s",
-      boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-    }),
+  // ─── Test ───
+  const startTest = async()=>{
+    if(!todayIsSunday){toast.error(`⏳ Test opens Sundays. ${daysLeft}d to go!`);return;}
+    setActiveTab("test"); setTestSubmitted(false); setTestAns({}); setTestScore(null); setCurQ(0); setTimeLeft(45*60); setLoadingAI(true);
+    const aiQs = await generateAIMCQQuestions();
+    setTestQs(aiQs.slice(0,30)); setLoadingAI(false);
+    try{await document.documentElement.requestFullscreen();}catch{}
+    setIsFullscreen(true);
   };
 
-  if (isLoading) return (
-    <div style={{ ...styles.page, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-        style={{ width: 40, height: 40, borderRadius: "50%", border: "3px solid rgba(99,102,241,0.3)", borderTopColor: "#6366f1" }} />
+  const handleSubmitTest = useCallback(async(auto=false)=>{
+    clearInterval(timerRef.current);
+    let correct=0;
+    testQs.forEach((q,i)=>{ if(testAns[i]===q.correct) correct++; });
+    const pct=testQs.length>0?Math.round((correct/testQs.length)*100):0;
+    setTestScore({correct,total:testQs.length,pct}); setTestSubmitted(true); setIsFullscreen(false);
+    try{await document.exitFullscreen();}catch{}
+    setOverlayData({score:correct,total:testQs.length});
+    setShowOverlay(true);
+    setShowConfetti(pct>=60);
+    setTimeout(()=>setShowConfetti(false),3500);
+    if(sessionUser){
+      await supabase.from("gk_scores").insert({user_id:sessionUser.id,score:correct,total:testQs.length,percentage:pct,type:"weekly",taken_at:new Date().toISOString()});
+      const {data:sc}=await supabase.from("gk_scores").select("*").eq("user_id",sessionUser.id).order("taken_at",{ascending:false}).limit(20);
+      if(sc) setScores(sc);
+    }
+  },[testQs,testAns,sessionUser]);
+
+  // ─── LOADING ───
+  if(isLoading) return(
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#F8FAFF"}}>
+      <motion.div animate={{rotate:360}} transition={{repeat:Infinity,duration:0.8,ease:"linear"}}
+        style={{width:34,height:34,borderRadius:"50%",border:"3px solid #EEF2FF",borderTopColor:"#4F46E5"}}/>
     </div>
   );
 
-  return (
-    <div style={styles.page}>
+  // ─── FULLSCREEN TEST ───
+  if(isFullscreen){
+    const q=testQs[curQ]; if(!q) return null;
+    const cs=clr(q.cat); const answered=Object.keys(testAns).length;
+    return(
+      <div style={{minHeight:"100vh",background:"#F8FAFF",paddingTop:50,fontFamily:"'DM Sans',sans-serif"}}>
+        <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Sora:wght@700;800&display=swap');`}</style>
+        <ProctoringBar timeLeft={timeLeft} totalTime={45*60} current={curQ+1} total={testQs.length}/>
+        <div style={{maxWidth:680,margin:"0 auto",padding:"18px 16px"}}>
+          {/* Navigator */}
+          <div style={{background:"#fff",border:"1.5px solid #E8ECF4",borderRadius:14,padding:"11px 14px",marginBottom:14,display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
+            {testQs.map((_,i)=>(
+              <button key={i} onClick={()=>setCurQ(i)}
+                style={{width:26,height:26,borderRadius:7,border:"none",cursor:"pointer",background:i===curQ?"#4F46E5":testAns[i]!==undefined?"#22C55E":"#E8ECF4",color:(i===curQ||testAns[i]!==undefined)?"#fff":"#94A3B8",fontWeight:700,fontSize:10,transition:"all 0.15s",transform:i===curQ?"scale(1.15)":"scale(1)",boxShadow:i===curQ?"0 2px 8px rgba(79,70,229,0.4)":"none"}}>
+                {i+1}
+              </button>
+            ))}
+            <div style={{marginLeft:"auto",color:"#94A3B8",fontSize:12,fontWeight:600}}>{answered}/{testQs.length}</div>
+          </div>
+          {/* Q Card */}
+          <AnimatePresence mode="wait">
+            <motion.div key={curQ} initial={{opacity:0,x:28}} animate={{opacity:1,x:0}} exit={{opacity:0,x:-28}} transition={{duration:0.2}}
+              style={{background:"#fff",border:"1.5px solid #E8ECF4",borderRadius:20,padding:"22px 20px",marginBottom:14,boxShadow:"0 4px 20px rgba(0,0,0,0.07)"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+                <span style={{background:cs.bg,color:cs.text,border:`1.5px solid ${cs.border}`,padding:"3px 11px",borderRadius:50,fontSize:11,fontWeight:800,letterSpacing:0.3}}>{q.cat.toUpperCase()}</span>
+                <span style={{marginLeft:"auto",color:"#CBD5E1",fontSize:12,fontWeight:600}}>Q {curQ+1} / {testQs.length}</span>
+              </div>
+              <p style={{fontSize:17,fontWeight:700,color:"#0F172A",lineHeight:1.55,margin:"0 0 18px"}}>{q.q}</p>
+              <div style={{display:"flex",flexDirection:"column",gap:9}}>
+                {q.options?.map((opt,oi)=>(
+                  <Opt key={oi} label={["A","B","C","D"][oi]} text={opt}
+                    selected={testAns[curQ]===oi} correct={false} wrong={false}
+                    onClick={()=>{ if(!testSubmitted) setTestAns(a=>({...a,[curQ]:oi})); }}/>
+                ))}
+              </div>
+            </motion.div>
+          </AnimatePresence>
+          {/* Nav buttons */}
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={()=>setCurQ(q=>Math.max(0,q-1))} disabled={curQ===0}
+              style={{padding:"13px 18px",borderRadius:12,border:"1.5px solid #E2E8F0",background:"#fff",color:"#64748B",fontWeight:700,cursor:curQ===0?"not-allowed":"pointer",opacity:curQ===0?0.4:1,fontFamily:"'DM Sans',sans-serif"}}>
+              ← Prev
+            </button>
+            {curQ<testQs.length-1?(
+              <button onClick={()=>setCurQ(q=>q+1)}
+                style={{flex:1,padding:"13px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#4F46E5,#7C3AED)",color:"#fff",fontWeight:800,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",boxShadow:"0 4px 14px rgba(79,70,229,0.35)"}}>
+                Next →
+              </button>
+            ):(
+              <motion.button whileHover={{scale:1.02}} whileTap={{scale:0.97}} onClick={()=>handleSubmitTest(false)}
+                style={{flex:1,padding:"13px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#059669,#10B981)",color:"#fff",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",boxShadow:"0 4px 16px rgba(5,150,105,0.4)"}}>
+                Submit Test 🚀
+              </motion.button>
+            )}
+          </div>
+          {answered<testQs.length&&(
+            <div style={{marginTop:10,background:"#FFFBEB",border:"1px solid #FCD34D",borderRadius:10,padding:"8px 13px",color:"#92400E",fontSize:12,fontWeight:600}}>
+              ⚠️ {testQs.length-answered} question{testQs.length-answered!==1?"s":""} unanswered
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ─── NORMAL UI ───
+  return(
+    <div style={{minHeight:"100vh",background:"#F8FAFF",fontFamily:"'DM Sans','Segoe UI',sans-serif"}}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@700;800&display=swap');
-        .gk-reveal-btn { background: linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; border:none; padding:10px 22px; border-radius:50px; font-weight:700; font-size:13px; cursor:pointer; transition:all 0.2s; }
-        .gk-reveal-btn:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(99,102,241,0.4); }
-        .gk-answer-box { background:linear-gradient(135deg,rgba(99,102,241,0.1),rgba(139,92,246,0.1)); border:1.5px solid rgba(99,102,241,0.3); border-radius:14px; padding:14px 18px; margin-top:14px; }
-        .gk-self-check { display:flex; gap:10px; margin-top:12px; }
-        .gk-correct-btn { flex:1; padding:9px; border-radius:12px; border:none; background:#dcfce7; color:#15803d; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:all 0.2s; }
-        .gk-correct-btn:hover,.gk-correct-btn.selected { background:#16a34a; color:#fff; transform:translateY(-1px); }
-        .gk-wrong-btn { flex:1; padding:9px; border-radius:12px; border:none; background:#fee2e2; color:#dc2626; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:all 0.2s; }
-        .gk-wrong-btn:hover,.gk-wrong-btn.selected { background:#dc2626; color:#fff; transform:translateY(-1px); }
-        .score-bar-bg { height:8px; background:rgba(255,255,255,0.1); border-radius:50px; overflow:hidden; }
-        .score-bar-fill { height:100%; background:linear-gradient(90deg,#6366f1,#8b5cf6); border-radius:50px; transition:width 1s ease; }
-        .stat-card { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:16px; padding:18px; text-align:center; }
-        @media(max-width:576px){.gk-tabs{flex-wrap:wrap;gap:8px!important;}.gk-tabs button{flex:1;min-width:120px;}}
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Sora:wght@700;800&display=swap');
+        *{box-sizing:border-box;margin:0;padding:0;}
+        html,body{background:#F8FAFF;}
+        ::-webkit-scrollbar{width:4px;}
+        ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:50px;}
       `}</style>
-      <Toaster position="bottom-center" toastOptions={{ style: { borderRadius: "12px", fontFamily: "'DM Sans',sans-serif" } }} />
+
+      <Toaster position="top-center" toastOptions={{style:{borderRadius:12,fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:600,boxShadow:"0 8px 30px rgba(0,0,0,0.12)"}}}/>
+
+      <AnimatePresence>
+        {showNotifModal&&<NotifModal onAllow={doAllowNotif} onDeny={()=>setShowNotifModal(false)}/>}
+        {showOverlay&&<ScoreOverlay score={overlayData.score} total={overlayData.total} onDone={()=>setShowOverlay(false)}/>}
+      </AnimatePresence>
+      <Confetti active={showConfetti}/>
 
       {/* ── HEADER ── */}
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} style={{ textAlign: "center", marginBottom: "32px" }}>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: 50, padding: "6px 18px", marginBottom: 16 }}>
-          <SparkleIcon />
-          <span style={{ color: "#a5b4fc", fontSize: 12, fontWeight: 800, letterSpacing: "1.5px" }}>DAILY GK BRAIN BOOST</span>
-        </div>
-        <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: "clamp(28px,6vw,48px)", fontWeight: 800, color: "#fff", margin: 0, lineHeight: 1.2 }}>
-          Knowledge <span style={{ background: "linear-gradient(135deg,#818cf8,#c084fc)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Pulse</span>
-        </h1>
-        <p style={{ color: "rgba(255,255,255,0.5)", marginTop: 10, fontSize: 15 }}>3 questions daily · Weekly tests · AI-powered · 6 AM delivery</p>
-      </motion.div>
-
-      {/* ── STATS ROW ── */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
-        style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
-        <div className="stat-card">
-          <div style={{ fontSize: 28, fontWeight: 800, color: "#f97316", fontFamily: "'Space Grotesk',sans-serif" }}>🔥 {streak}</div>
-          <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, marginTop: 4 }}>Day Streak</div>
-        </div>
-        <div className="stat-card">
-          <div style={{ fontSize: 28, fontWeight: 800, color: "#a5b4fc", fontFamily: "'Space Grotesk',sans-serif" }}>{scores.length > 0 ? `${scores[0].percentage}%` : "—"}</div>
-          <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, marginTop: 4 }}>Last Test</div>
-        </div>
-        <div className="stat-card">
-          <div style={{ fontSize: 28, fontWeight: 800, color: "#4ade80", fontFamily: "'Space Grotesk',sans-serif" }}>{scores.length}</div>
-          <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, marginTop: 4 }}>Tests Taken</div>
-        </div>
-      </motion.div>
-
-      {/* ── NOTIFICATION TOGGLE ── */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} style={styles.card}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ width: 46, height: 46, borderRadius: 14, background: notifEnabled ? "linear-gradient(135deg,#6366f1,#8b5cf6)" : "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", color: notifEnabled ? "#fff" : "rgba(255,255,255,0.4)", transition: "all 0.3s" }}>
-              <BellIcon active={notifEnabled} />
-            </div>
-            <div>
-              <div style={{ color: "#fff", fontWeight: 700, fontSize: 15 }}>Daily 6 AM Notifications</div>
-              <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 }}>
-                {notifEnabled ? "🟢 Active — 3 questions every morning" : "Off — tap to enable"}
+      <div style={{background:"#fff",borderBottom:"1px solid #EEF2F7",position:"sticky",top:0,zIndex:100,boxShadow:"0 1px 10px rgba(0,0,0,0.05)"}}>
+        <div style={{maxWidth:600,margin:"0 auto",padding:"0 16px"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 0 10px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{width:38,height:38,borderRadius:11,background:"linear-gradient(135deg,#4F46E5,#7C3AED)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 3px 10px rgba(79,70,229,0.35)"}}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+              </div>
+              <div>
+                <div style={{fontFamily:"'Sora',sans-serif",fontWeight:800,fontSize:16,color:"#0F172A",lineHeight:1.2}}>Knowledge Pulse</div>
+                <div style={{fontSize:11,color:"#94A3B8",fontWeight:600}}>Daily GK · Sunday Tests</div>
               </div>
             </div>
+            <div style={{background:scores.length>0?"#EEF2FF":"#F8FAFF",border:`1.5px solid ${scores.length>0?"#C7D2FE":"#E2E8F0"}`,borderRadius:10,padding:"5px 12px",fontSize:13,fontWeight:800,color:scores.length>0?"#4338CA":"#94A3B8"}}>
+              {scores.length>0?`Best: ${Math.max(...scores.map(s=>s.percentage))}%`:"No tests yet"}
+            </div>
           </div>
-          <button style={styles.toggleTrack(notifEnabled)} onClick={handleToggleNotif}>
-            <div style={styles.toggleThumb(notifEnabled)} />
-          </button>
+          <div style={{display:"flex",borderTop:"1px solid #F1F5F9"}}>
+            {[["today","📅 Today"],["test","🏆 Test"],["scores","📊 Scores"]].map(([k,label])=>(
+              <button key={k} onClick={()=>setActiveTab(k)}
+                style={{flex:1,padding:"11px 6px",border:"none",background:"transparent",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:activeTab===k?800:600,fontSize:13,color:activeTab===k?"#4F46E5":"#94A3B8",borderBottom:`2.5px solid ${activeTab===k?"#4F46E5":"transparent"}`,transition:"all 0.2s",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
-        {!notifSupported && (
-          <div style={{ marginTop: 12, background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 10, padding: "10px 14px", color: "#fbbf24", fontSize: 12 }}>
-            ⚠️ Push notifications may not be supported in this browser. Use Chrome/Edge on Android for best experience.
-          </div>
-        )}
-      </motion.div>
-
-      {/* ── TABS ── */}
-      <div className="gk-tabs" style={{ display: "flex", gap: 10, marginBottom: 24, justifyContent: "center" }}>
-        {[["today", "📅 Today's Questions"], ["weekly", "📚 This Week"], ["test", "🏆 Weekly Test"], ["scores", "📊 My Scores"]].map(([k, label]) => (
-          <button key={k} style={styles.tabBtn(activeTab === k)} onClick={() => k === "test" ? startWeeklyTest() : setActiveTab(k)}>{label}</button>
-        ))}
       </div>
 
-      {/* ── TODAY'S QUESTIONS ── */}
-      <AnimatePresence mode="wait">
-        {activeTab === "today" && (
-          <motion.div key="today" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, marginBottom: 16, textAlign: "center" }}>
-              {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+      <div style={{maxWidth:600,margin:"0 auto",padding:"18px 16px 80px"}}>
+
+        {/* STATS */}
+        <motion.div initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} transition={{delay:0.05}}
+          style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}}>
+          {[
+            {val:new Date().toLocaleDateString("en-IN",{weekday:"short"}),icon:"📅",label:"Today",color:"#4F46E5"},
+            {val:todayIsSunday?"Now!":daysLeft+"d",icon:todayIsSunday?"📝":"⏳",label:"Until Sunday",color:todayIsSunday?"#059669":"#D97706"},
+            {val:String(scores.length),icon:"🏆",label:"Tests",color:"#0EA5E9"},
+          ].map((s,i)=>(
+            <motion.div key={i} whileHover={{y:-2}}
+              style={{background:"#fff",border:"1.5px solid #EEF2F7",borderRadius:14,padding:"13px 10px",textAlign:"center",boxShadow:"0 1px 8px rgba(0,0,0,0.04)"}}>
+              <div style={{fontSize:20,marginBottom:2}}>{s.icon}</div>
+              <div style={{fontFamily:"'Sora',sans-serif",fontWeight:800,fontSize:18,color:s.color,lineHeight:1.2}}>{s.val}</div>
+              <div style={{color:"#94A3B8",fontSize:11,fontWeight:600,marginTop:3}}>{s.label}</div>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {/* NOTIFICATION TOGGLE */}
+        <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.1}}
+          style={{background:"#fff",border:"1.5px solid #EEF2F7",borderRadius:14,padding:"13px 15px",marginBottom:18,boxShadow:"0 1px 8px rgba(0,0,0,0.04)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <div style={{width:38,height:38,borderRadius:10,background:notifEnabled?"linear-gradient(135deg,#4F46E5,#7C3AED)":"#F1F5F9",display:"flex",alignItems:"center",justifyContent:"center",color:notifEnabled?"#fff":"#94A3B8",transition:"all 0.3s",flexShrink:0}}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill={notifEnabled?"currentColor":"none"} stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
             </div>
-            {todayQuestions.map((item, i) => {
-              const cs = getCatStyle(item.cat);
-              return (
-                <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} style={styles.qCard(item.cat)}>
-                  {/* Decorative dot */}
-                  <div style={{ position: "absolute", top: 0, right: 0, width: 80, height: 80, borderRadius: "0 20px 0 80px", background: cs.dot, opacity: 0.08 }} />
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                    <span style={{ background: cs.border, color: cs.text, padding: "3px 12px", borderRadius: 50, fontSize: 11, fontWeight: 800, letterSpacing: "0.5px" }}>
-                      {i === 2 ? "📰 CURRENT AFFAIRS" : `Q${i + 1} · ${item.cat.toUpperCase()}`}
-                    </span>
-                    <span style={{ marginLeft: "auto", width: 28, height: 28, borderRadius: "50%", background: cs.dot, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 800 }}>{i + 1}</span>
-                  </div>
-                  <p style={{ color: "#1e293b", fontWeight: 700, fontSize: 16, lineHeight: 1.5, margin: "0 0 16px" }}>{item.q}</p>
-                  {!revealed[i] ? (
-                    <button className="gk-reveal-btn" onClick={() => revealAnswer(i)}>Reveal Answer ✨</button>
-                  ) : (
-                    <motion.div className="gk-answer-box" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                        <span style={{ background: "#6366f1", color: "#fff", padding: "2px 10px", borderRadius: 50, fontSize: 11, fontWeight: 800 }}>ANSWER</span>
-                      </div>
-                      <p style={{ color: "#312e81", fontWeight: 700, fontSize: 15, margin: 0 }}>✅ {item.a}</p>
-                    </motion.div>
-                  )}
-                </motion.div>
-              );
-            })}
-            {Object.keys(revealed).length === todayQuestions.length && todayQuestions.length > 0 && (
-              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ textAlign: "center", padding: "24px", background: "linear-gradient(135deg,rgba(99,102,241,0.15),rgba(139,92,246,0.15))", border: "1px solid rgba(99,102,241,0.3)", borderRadius: 20 }}>
-                <div style={{ fontSize: 40, marginBottom: 8 }}>🎉</div>
-                <div style={{ color: "#fff", fontWeight: 800, fontSize: 18 }}>All done for today!</div>
-                <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 4 }}>Come back tomorrow for 3 new questions. Streak: 🔥{streak}</div>
-              </motion.div>
-            )}
-          </motion.div>
-        )}
-
-        {/* ── WEEKLY QUESTIONS ── */}
-        {activeTab === "weekly" && (
-          <motion.div key="weekly" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, marginBottom: 20, textAlign: "center" }}>
-              This week's 21 questions — used in your weekly test
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:700,fontSize:14,color:"#0F172A"}}>Daily 6 AM Notifications</div>
+              <div style={{fontSize:12,color:notifEnabled?"#059669":"#94A3B8",marginTop:1,fontWeight:600}}>
+                {notifEnabled?"🟢 Active — like Duolingo reminders!":"Off — tap to enable daily GK alerts"}
+              </div>
             </div>
-            {weeklyQuestions.map((item, i) => {
-              const cs = getCatStyle(item.cat);
-              return (
-                <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.04, 0.6) }} style={styles.qCard(item.cat)}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                    <span style={{ background: cs.border, color: cs.text, padding: "2px 10px", borderRadius: 50, fontSize: 11, fontWeight: 800 }}>Day {Math.floor(i / 3) + 1} · {item.cat}</span>
-                    <span style={{ marginLeft: "auto", fontSize: 12, color: cs.text, fontWeight: 700 }}>#{i + 1}</span>
+            <button onClick={handleToggleNotif}
+              style={{width:50,height:27,background:notifEnabled?"linear-gradient(135deg,#4F46E5,#7C3AED)":"#E2E8F0",borderRadius:50,position:"relative",border:"none",cursor:"pointer",transition:"all 0.3s",flexShrink:0}}>
+              <div style={{position:"absolute",top:3.5,left:notifEnabled?25:3.5,width:20,height:20,borderRadius:"50%",background:"#fff",transition:"left 0.3s",boxShadow:"0 1px 5px rgba(0,0,0,0.2)"}}/>
+            </button>
+          </div>
+        </motion.div>
+
+        {/* TABS */}
+        <AnimatePresence mode="wait">
+
+          {/* TODAY */}
+          {activeTab==="today"&&(
+            <motion.div key="today" initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-8}}>
+              <div style={{textAlign:"center",color:"#94A3B8",fontSize:11,fontWeight:700,marginBottom:14,letterSpacing:0.5}}>
+                {new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long",year:"numeric"}).toUpperCase()}
+              </div>
+
+              {todayQs.map((item,qi)=>{
+                const cs=clr(item.cat); const sel=todayAns[qi]; const sub=todaySubmitted;
+                return(
+                  <motion.div key={qi} initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} transition={{delay:qi*0.07}}
+                    style={{background:"#fff",border:"1.5px solid #EEF2F7",borderRadius:18,padding:"18px 16px",marginBottom:12,boxShadow:"0 2px 10px rgba(0,0,0,0.05)",overflow:"hidden",position:"relative"}}>
+                    <div style={{position:"absolute",top:0,left:0,right:0,height:3.5,background:`linear-gradient(90deg,${cs.dot},${cs.border})`,borderRadius:"18px 18px 0 0"}}/>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:13,marginTop:4}}>
+                      <span style={{background:cs.bg,color:cs.text,border:`1.5px solid ${cs.border}`,padding:"3px 11px",borderRadius:50,fontSize:11,fontWeight:800,letterSpacing:0.3}}>
+                        {qi===2?"📰 CURRENT AFFAIRS":`Q${qi+1} · ${item.cat.toUpperCase()}`}
+                      </span>
+                      <div style={{marginLeft:"auto",width:24,height:24,borderRadius:"50%",background:cs.dot,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:11,fontWeight:900}}>{qi+1}</div>
+                    </div>
+                    <p style={{fontWeight:700,fontSize:15,color:"#0F172A",lineHeight:1.55,marginBottom:14}}>{item.q}</p>
+                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                      {item.options?.map((opt,oi)=>{
+                        const isSel=sel===oi;
+                        const isCorrect=sub&&oi===item.correct;
+                        const isWrong=sub&&isSel&&oi!==item.correct;
+                        return <Opt key={oi} label={["A","B","C","D"][oi]} text={opt}
+                          selected={isSel&&!sub} correct={isCorrect} wrong={isWrong}
+                          onClick={()=>selectTodayAns(qi,oi)} disabled={sub}/>;
+                      })}
+                    </div>
+                    {sub&&(
+                      <motion.div initial={{opacity:0,y:5}} animate={{opacity:1,y:0}} transition={{delay:0.2}}
+                        style={{marginTop:11,background:"#F0FDF4",border:"1.5px solid #BBF7D0",borderRadius:10,padding:"9px 13px"}}>
+                        <div style={{fontSize:12,color:"#166534",fontWeight:700}}>
+                          ✅ Correct: <span style={{color:"#15803D"}}>{item.options[item.correct]}</span>
+                          {todayAns[qi]!==item.correct&&<span style={{color:"#DC2626",fontWeight:600,marginLeft:8}}>· Your answer: {item.options[todayAns[qi]]}</span>}
+                        </div>
+                      </motion.div>
+                    )}
+                  </motion.div>
+                );
+              })}
+
+              {!todaySubmitted?(
+                <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.25}}>
+                  <div style={{display:"flex",justifyContent:"center",gap:7,marginBottom:12}}>
+                    {todayQs.map((_,i)=>(
+                      <div key={i} style={{width:9,height:9,borderRadius:"50%",background:todayAns[i]!==undefined?"#4F46E5":"#E2E8F0",transition:"background 0.25s"}}/>
+                    ))}
                   </div>
-                  <p style={{ color: "#1e293b", fontWeight: 600, fontSize: 14, margin: "0 0 12px" }}>{item.q}</p>
-                  <div style={{ background: cs.bg, border: `1px solid ${cs.border}`, borderRadius: 10, padding: "10px 14px" }}>
-                    <span style={{ color: cs.text, fontWeight: 700, fontSize: 13 }}>→ {item.a}</span>
+                  <motion.button whileHover={{scale:1.02}} whileTap={{scale:0.97}} onClick={submitTodayQuiz}
+                    disabled={Object.keys(todayAns).length<todayQs.length}
+                    style={{width:"100%",padding:"15px",borderRadius:14,border:"none",background:Object.keys(todayAns).length===todayQs.length?"linear-gradient(135deg,#4F46E5,#7C3AED)":"#E2E8F0",color:Object.keys(todayAns).length===todayQs.length?"#fff":"#94A3B8",fontWeight:800,fontSize:15,cursor:Object.keys(todayAns).length===todayQs.length?"pointer":"not-allowed",boxShadow:Object.keys(todayAns).length===todayQs.length?"0 5px 18px rgba(79,70,229,0.35)":"none",fontFamily:"'DM Sans',sans-serif",transition:"all 0.3s"}}>
+                    {Object.keys(todayAns).length===todayQs.length?"Submit Answers 🚀":`Answer all 3 to submit (${Object.keys(todayAns).length}/3)`}
+                  </motion.button>
+                </motion.div>
+              ):todayScore&&(
+                <motion.div initial={{opacity:0,scale:0.95}} animate={{opacity:1,scale:1}}
+                  style={{background:"linear-gradient(135deg,#EEF2FF,#F5F3FF)",border:"1.5px solid #C7D2FE",borderRadius:18,padding:"22px",textAlign:"center"}}>
+                  <div style={{fontSize:34,marginBottom:6}}>{todayScore.pct===100?"🏆":todayScore.pct>=67?"🎯":"📚"}</div>
+                  <div style={{fontFamily:"'Sora',sans-serif",fontWeight:800,fontSize:28,color:"#312E81"}}>{todayScore.correct}/{todayScore.total}</div>
+                  <div style={{color:"#6366F1",fontWeight:700,fontSize:14,marginTop:4}}>
+                    {todayScore.pct===100?"Perfect Score! 🌟":todayScore.pct>=67?"Great job! 💪":"Keep practicing! 📖"}
+                  </div>
+                  <div style={{color:"#94A3B8",fontSize:12,marginTop:5}}>
+                    Come back tomorrow · {todayIsSunday?"Take Sunday Test →":daysLeft+"d until Sunday test"}
                   </div>
                 </motion.div>
-              );
-            })}
-          </motion.div>
-        )}
+              )}
+            </motion.div>
+          )}
 
-        {/* ── WEEKLY TEST ── */}
-        {activeTab === "test" && (
-          <motion.div key="test" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            {loadingAI ? (
-              <div style={{ textAlign: "center", padding: "60px 0" }}>
-                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                  style={{ width: 48, height: 48, borderRadius: "50%", border: "3px solid rgba(99,102,241,0.3)", borderTopColor: "#6366f1", margin: "0 auto 16px" }} />
-                <div style={{ color: "rgba(255,255,255,0.6)" }}>AI is crafting 9 bonus questions...</div>
-              </div>
-            ) : testSubmitted ? (
-              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 64, marginBottom: 16 }}>
-                  {testScore.pct >= 80 ? "🏆" : testScore.pct >= 60 ? "🎯" : "📚"}
+          {/* TEST */}
+          {activeTab==="test"&&(
+            <motion.div key="test" initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-8}}>
+              {loadingAI?(
+                <div style={{textAlign:"center",padding:"56px 0"}}>
+                  <motion.div animate={{rotate:360}} transition={{repeat:Infinity,duration:0.8,ease:"linear"}}
+                    style={{width:42,height:42,borderRadius:"50%",border:"3px solid #EEF2FF",borderTopColor:"#4F46E5",margin:"0 auto 14px"}}/>
+                  <div style={{color:"#64748B",fontWeight:600}}>AI is generating 30 questions...</div>
                 </div>
-                <h2 style={{ color: "#fff", fontFamily: "'Space Grotesk',sans-serif", fontSize: 36, fontWeight: 800, margin: "0 0 8px" }}>
-                  {testScore.correct}/{testScore.total}
-                </h2>
-                <div style={{ color: "rgba(255,255,255,0.6)", marginBottom: 24, fontSize: 15 }}>
-                  {testScore.pct >= 80 ? "Outstanding! You're a GK master 🌟" : testScore.pct >= 60 ? "Good job! Keep learning 💪" : "Keep practicing — you'll get there! 📖"}
-                </div>
-                <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 16, padding: "20px 24px", marginBottom: 24 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", color: "rgba(255,255,255,0.6)", fontSize: 13, marginBottom: 10 }}>
-                    <span>Score</span><span style={{ color: "#a5b4fc", fontWeight: 700 }}>{testScore.pct}%</span>
+              ):testSubmitted&&testScore?(
+                <>
+                  <div style={{background:"linear-gradient(135deg,#0F172A,#1E1B4B)",borderRadius:22,padding:"28px 22px",textAlign:"center",marginBottom:14,boxShadow:"0 12px 40px rgba(79,70,229,0.25)"}}>
+                    <div style={{fontSize:44,marginBottom:8}}>{testScore.pct>=80?"🏆":testScore.pct>=60?"🎯":"📚"}</div>
+                    <div style={{fontFamily:"'Sora',sans-serif",fontSize:48,fontWeight:800,color:"#fff",lineHeight:1}}>{testScore.pct}%</div>
+                    <div style={{color:"rgba(255,255,255,0.45)",fontSize:13,margin:"6px 0 18px"}}>{testScore.correct}/{testScore.total} correct</div>
+                    <div style={{height:6,background:"rgba(255,255,255,0.1)",borderRadius:50,overflow:"hidden"}}>
+                      <motion.div initial={{width:0}} animate={{width:`${testScore.pct}%`}} transition={{duration:1.4,delay:0.3}}
+                        style={{height:"100%",background:"linear-gradient(90deg,#4F46E5,#8B5CF6,#EC4899)",borderRadius:50}}/>
+                    </div>
                   </div>
-                  <div className="score-bar-bg"><div className="score-bar-fill" style={{ width: `${testScore.pct}%` }} /></div>
-                </div>
-                <button className="gk-reveal-btn" style={{ fontSize: 15, padding: "14px 32px" }} onClick={() => { setTestSubmitted(false); startWeeklyTest(); }}>
-                  Retry Test 🔄
-                </button>
-              </motion.div>
-            ) : (
-              <>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-                  <div>
-                    <div style={{ color: "#fff", fontWeight: 800, fontSize: 18 }}>Weekly Test</div>
-                    <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 13 }}>21 weekly + 9 AI questions = {testQuestions.length} total</div>
+                  <div style={{color:"#94A3B8",fontSize:11,fontWeight:700,letterSpacing:0.5,marginBottom:10}}>QUESTION REVIEW</div>
+                  {testQs.map((q,i)=>{
+                    const isCorrect=testAns[i]===q.correct;
+                    return(
+                      <motion.div key={i} initial={{opacity:0,x:-8}} animate={{opacity:1,x:0}} transition={{delay:i*0.02}}
+                        style={{background:"#fff",border:`1.5px solid ${isCorrect?"#BBF7D0":"#FECDD3"}`,borderRadius:13,padding:"12px 14px",marginBottom:9,boxShadow:"0 1px 5px rgba(0,0,0,0.04)"}}>
+                        <div style={{display:"flex",gap:9}}>
+                          <div style={{width:24,height:24,borderRadius:"50%",background:isCorrect?"#DCFCE7":"#FEE2E2",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,flexShrink:0}}>{isCorrect?"✅":"❌"}</div>
+                          <div>
+                            <div style={{fontWeight:600,fontSize:13,color:"#0F172A",marginBottom:3}}>{q.q}</div>
+                            <div style={{fontSize:12}}>
+                              <span style={{color:"#16A34A",fontWeight:700}}>✓ {q.options?.[q.correct]}</span>
+                              {!isCorrect&&testAns[i]!==undefined&&<span style={{color:"#DC2626",fontWeight:600}}> · Your: {q.options?.[testAns[i]]}</span>}
+                            </div>
+                            {q.explanation&&<div style={{fontSize:11,color:"#64748B",marginTop:3,fontStyle:"italic"}}>💡 {q.explanation}</div>}
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </>
+              ):todayIsSunday?(
+                <div>
+                  <div style={{background:"linear-gradient(135deg,#4F46E5,#7C3AED)",borderRadius:22,padding:"28px 22px",textAlign:"center",color:"#fff",marginBottom:14,boxShadow:"0 10px 36px rgba(79,70,229,0.35)",position:"relative",overflow:"hidden"}}>
+                    <div style={{position:"absolute",top:-45,right:-45,width:160,height:160,borderRadius:"50%",background:"rgba(255,255,255,0.05)"}}/>
+                    <div style={{position:"absolute",bottom:-35,left:-35,width:120,height:120,borderRadius:"50%",background:"rgba(255,255,255,0.04)"}}/>
+                    <motion.div animate={{scale:[1,1.08,1]}} transition={{repeat:Infinity,duration:2.2}} style={{fontSize:48,marginBottom:10,position:"relative"}}>📝</motion.div>
+                    <h2 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:800,margin:"0 0 7px"}}>Sunday Weekly Test</h2>
+                    <p style={{opacity:0.75,fontSize:13,margin:"0 0 18px"}}>30 AI questions · 45 min · MNC-style proctored</p>
+                    <div style={{display:"flex",gap:7,justifyContent:"center",flexWrap:"wrap",marginBottom:20}}>
+                      {["30 MCQs","45 Min","Proctored","Auto-Score"].map(t=>(
+                        <span key={t} style={{background:"rgba(255,255,255,0.14)",border:"1px solid rgba(255,255,255,0.22)",borderRadius:50,padding:"4px 11px",fontSize:11,fontWeight:700}}>{t}</span>
+                      ))}
+                    </div>
+                    <motion.button whileHover={{scale:1.04}} whileTap={{scale:0.97}} onClick={startTest}
+                      style={{background:"#fff",color:"#4F46E5",border:"none",padding:"13px 36px",borderRadius:50,fontWeight:800,fontSize:15,cursor:"pointer",boxShadow:"0 6px 18px rgba(0,0,0,0.18)",fontFamily:"'DM Sans',sans-serif",position:"relative"}}>
+                      Start Exam 🚀
+                    </motion.button>
                   </div>
-                  <div style={{ background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.4)", borderRadius: 12, padding: "8px 16px", color: "#a5b4fc", fontWeight: 800, fontSize: 14 }}>
-                    {Object.keys(testAnswers).length}/{testQuestions.length}
-                  </div>
+                  {[["🎯","30 MCQ Questions","AI-generated across all GK categories"],["🎥","Proctored Mode","Fullscreen + cam/mic indicators"],["⏱️","45 Minutes","Auto-submits on timeout"],["📊","Instant Results","Detailed review with explanations"]].map(([icon,title,desc],i)=>(
+                    <motion.div key={i} initial={{opacity:0,x:-8}} animate={{opacity:1,x:0}} transition={{delay:i*0.07}}
+                      style={{background:"#fff",border:"1.5px solid #EEF2F7",borderRadius:13,padding:"13px 15px",marginBottom:9,display:"flex",gap:12,alignItems:"center",boxShadow:"0 1px 6px rgba(0,0,0,0.04)"}}>
+                      <span style={{fontSize:22,width:34,textAlign:"center",flexShrink:0}}>{icon}</span>
+                      <div><div style={{fontWeight:700,fontSize:14,color:"#0F172A"}}>{title}</div><div style={{fontSize:12,color:"#64748B",marginTop:2}}>{desc}</div></div>
+                    </motion.div>
+                  ))}
                 </div>
-                {testQuestions.map((item, i) => {
-                  const cs = getCatStyle(item.cat);
-                  const answered = testAnswers[i] !== undefined;
-                  return (
-                    <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.03, 0.5) }} style={styles.qCard(item.cat)}>
-                      <div style={{ display: "flex", gap: 8, marginBottom: 10, alignItems: "center" }}>
-                        <span style={{ background: cs.border, color: cs.text, padding: "2px 10px", borderRadius: 50, fontSize: 11, fontWeight: 800 }}>
-                          {i >= 21 ? "🤖 AI" : `Q${i + 1}`} · {item.cat}
-                        </span>
-                        {answered && <span style={{ marginLeft: "auto", color: testAnswers[i] ? "#16a34a" : "#dc2626", fontSize: 12, fontWeight: 800 }}>{testAnswers[i] ? "✅ Got it" : "❌ Missed"}</span>}
+              ):(
+                <motion.div initial={{opacity:0,y:8}} animate={{opacity:1,y:0}}
+                  style={{background:"#fff",border:"1.5px solid #EEF2F7",borderRadius:22,padding:"32px 22px",textAlign:"center",boxShadow:"0 4px 18px rgba(0,0,0,0.06)"}}>
+                  <div style={{fontSize:52,marginBottom:10}}>⏳</div>
+                  <div style={{fontFamily:"'Sora',sans-serif",fontSize:68,fontWeight:800,color:"#0F172A",lineHeight:1}}>{daysLeft}</div>
+                  <div style={{fontSize:17,fontWeight:700,color:"#4F46E5",marginTop:7}}>day{daysLeft!==1?"s":""} until Sunday Test</div>
+                  <div style={{color:"#94A3B8",fontSize:13,margin:"6px 0 22px"}}>Weekly exam · 30 AI MCQs · 45 minutes</div>
+                  <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:18}}>
+                    {["M","T","W","T","F","S","S"].map((d,i)=>{
+                      const isSun=i===daysLeft, isToday=i===0;
+                      return(
+                        <div key={i} style={{width:34,height:34,borderRadius:9,background:isSun?"#4F46E5":isToday?"#EEF2FF":"#F8FAFF",border:`1.5px solid ${isSun?"#4F46E5":isToday?"#C7D2FE":"#E2E8F0"}`,display:"flex",alignItems:"center",justifyContent:"center",color:isSun?"#fff":isToday?"#4338CA":"#94A3B8",fontWeight:isSun||isToday?800:600,fontSize:12,boxShadow:isSun?"0 3px 10px rgba(79,70,229,0.35)":"none"}}>
+                          {d}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{background:"#F8FAFF",border:"1.5px dashed #C7D2FE",borderRadius:11,padding:"10px 13px",color:"#4338CA",fontSize:13,fontWeight:600}}>
+                    📚 Practice today's daily questions meanwhile!
+                  </div>
+                </motion.div>
+              )}
+            </motion.div>
+          )}
+
+          {/* SCORES */}
+          {activeTab==="scores"&&(
+            <motion.div key="scores" initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-8}}>
+              {scores.length===0?(
+                <div style={{textAlign:"center",padding:"52px 0"}}>
+                  <div style={{width:58,height:58,borderRadius:18,background:"#F1F5F9",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 13px",fontSize:26}}>🏆</div>
+                  <div style={{color:"#64748B",fontSize:14,fontWeight:600}}>No tests taken yet</div>
+                  <div style={{color:"#94A3B8",fontSize:13,marginTop:4}}>Start with today's 3 daily questions!</div>
+                </div>
+              ):(
+                <>
+                  <div style={{background:"linear-gradient(135deg,#0F172A,#1E1B4B)",borderRadius:18,padding:"18px 20px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                    <div>
+                      <div style={{color:"rgba(255,255,255,0.4)",fontSize:10,fontWeight:700,marginBottom:3,letterSpacing:0.5}}>PERSONAL BEST</div>
+                      <div style={{fontFamily:"'Sora',sans-serif",color:"#fff",fontSize:34,fontWeight:800,lineHeight:1}}>{Math.max(...scores.map(s=>s.percentage))}%</div>
+                    </div>
+                    <div style={{fontSize:40}}>🥇</div>
+                  </div>
+                  <div style={{color:"#94A3B8",fontSize:10,fontWeight:700,letterSpacing:0.5,marginBottom:9}}>HISTORY ({scores.length})</div>
+                  {scores.map((s,i)=>(
+                    <motion.div key={s.id||i} initial={{opacity:0,x:-8}} animate={{opacity:1,x:0}} transition={{delay:i*0.04}}
+                      style={{background:"#fff",border:"1.5px solid #EEF2F7",borderRadius:14,padding:"14px 16px",marginBottom:9,boxShadow:"0 1px 6px rgba(0,0,0,0.04)"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9}}>
+                        <div>
+                          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
+                            <div style={{fontWeight:800,fontSize:14,color:"#0F172A"}}>{s.score}/{s.total}</div>
+                            {s.type&&<span style={{background:s.type==="daily"?"#EEF2FF":"#F0FDF4",color:s.type==="daily"?"#4338CA":"#166534",border:`1px solid ${s.type==="daily"?"#C7D2FE":"#BBF7D0"}`,borderRadius:50,padding:"1px 7px",fontSize:9,fontWeight:800}}>{s.type==="daily"?"DAILY":"WEEKLY"}</span>}
+                          </div>
+                          <div style={{color:"#94A3B8",fontSize:11}}>{new Date(s.taken_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}</div>
+                        </div>
+                        <div style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:800,color:s.percentage>=80?"#059669":s.percentage>=60?"#D97706":"#DC2626"}}>{s.percentage}%</div>
                       </div>
-                      <p style={{ color: "#1e293b", fontWeight: 600, fontSize: 14, margin: "0 0 12px" }}>{item.q}</p>
-                      <div style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 10, padding: "10px 14px", marginBottom: 12 }}>
-                        <span style={{ color: "#312e81", fontWeight: 700, fontSize: 13 }}>Answer: {item.a}</span>
-                      </div>
-                      <div className="gk-self-check">
-                        <button className={`gk-correct-btn ${testAnswers[i] === true ? "selected" : ""}`} onClick={() => setTestAnswers(a => ({ ...a, [i]: true }))}>
-                          <CheckIcon /> I got it!
-                        </button>
-                        <button className={`gk-wrong-btn ${testAnswers[i] === false ? "selected" : ""}`} onClick={() => setTestAnswers(a => ({ ...a, [i]: false }))}>
-                          <XIcon /> Missed it
-                        </button>
+                      <div style={{height:6,background:"#F1F5F9",borderRadius:50,overflow:"hidden"}}>
+                        <motion.div initial={{width:0}} animate={{width:`${s.percentage}%`}} transition={{duration:0.8,delay:i*0.05}}
+                          style={{height:"100%",borderRadius:50,background:s.percentage>=80?"linear-gradient(90deg,#059669,#34D399)":s.percentage>=60?"linear-gradient(90deg,#D97706,#FBBF24)":"linear-gradient(90deg,#DC2626,#F87171)"}}/>
                       </div>
                     </motion.div>
-                  );
-                })}
-                {testQuestions.length > 0 && (
-                  <button className="gk-reveal-btn" style={{ width: "100%", padding: "16px", fontSize: 16, borderRadius: 16, marginTop: 8 }} onClick={submitTest}>
-                    Submit Test 🚀
-                  </button>
-                )}
-              </>
-            )}
-          </motion.div>
-        )}
+                  ))}
+                </>
+              )}
+            </motion.div>
+          )}
 
-        {/* ── SCORES ── */}
-        {activeTab === "scores" && (
-          <motion.div key="scores" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, marginBottom: 20, textAlign: "center" }}>Your last 10 test performances</div>
-            {scores.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "48px 0" }}>
-                <TrophyIcon />
-                <div style={{ color: "rgba(255,255,255,0.4)", marginTop: 16 }}>No tests taken yet.<br />Take your first weekly test!</div>
-                <button className="gk-reveal-btn" style={{ marginTop: 20 }} onClick={startWeeklyTest}>Start Test 🏆</button>
-              </div>
-            ) : scores.map((s, i) => (
-              <motion.div key={s.id || i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: "18px 20px", marginBottom: 12 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                  <div>
-                    <div style={{ color: "#fff", fontWeight: 700 }}>{s.score}/{s.total} correct</div>
-                    <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>{new Date(s.taken_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</div>
-                  </div>
-                  <div style={{ fontSize: 24, fontWeight: 800, color: s.percentage >= 80 ? "#4ade80" : s.percentage >= 60 ? "#fbbf24" : "#f87171", fontFamily: "'Space Grotesk',sans-serif" }}>
-                    {s.percentage}%
-                  </div>
-                </div>
-                <div className="score-bar-bg"><div className="score-bar-fill" style={{ width: `${s.percentage}%`, background: s.percentage >= 80 ? "linear-gradient(90deg,#22c55e,#4ade80)" : s.percentage >= 60 ? "linear-gradient(90deg,#f59e0b,#fbbf24)" : "linear-gradient(90deg,#ef4444,#f87171)" }} /></div>
-              </motion.div>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── FOOTER ── */}
-      <div style={{ textAlign: "center", marginTop: 40, color: "rgba(255,255,255,0.2)", fontSize: 12 }}>
-        Knowledge Pulse · 3 GK + 1 Current Affairs daily at 6 AM
+        </AnimatePresence>
       </div>
     </div>
   );
-};
-
-export default GKDailyNotifications;
+}
