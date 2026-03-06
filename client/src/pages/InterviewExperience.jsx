@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Plus, Shield, Briefcase, Send, 
   Clock, Award, Monitor, Trash2, Edit3, AlertCircle, Calendar,
-  Globe, ThumbsUp, Check, X
+  Globe, ThumbsUp, Check, X, Share2, CheckCircle
 } from "react-feather";
 import toast, { Toaster } from "react-hot-toast";
 import { supabase } from "../supabaseClient"; 
@@ -174,6 +174,7 @@ const InterviewExperience = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sessionUser, setSessionUser] = useState(null); 
   const [votedPosts, setVotedPosts] = useState(() => getStoredUpvotes());
+  const [copiedId, setCopiedId] = useState(null); // ── NEW: track which card was copied
   const recordsPerPage = 3;
 
   const today = new Date().toISOString().split('T')[0];
@@ -203,6 +204,46 @@ const InterviewExperience = () => {
     };
     initialize();
   }, []);
+
+  // ── NEW: On mount, scroll to shared experience if ?xp= param exists ──
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const xpId = params.get("xp");
+    if (!xpId) return;
+    const tryScroll = setInterval(() => {
+      const el = document.getElementById(`xp-card-${xpId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.style.transition = "box-shadow 0.4s ease";
+        el.style.boxShadow = "0 0 0 3px #6366f1, 0 8px 32px rgba(99,102,241,0.25)";
+        setTimeout(() => { el.style.boxShadow = ""; }, 3000);
+        clearInterval(tryScroll);
+      }
+    }, 300);
+    setTimeout(() => clearInterval(tryScroll), 8000);
+  }, [experiences]);
+
+  // ── NEW: Share handler ──────────────────────────────────────────────────────
+  const handleShare = (id) => {
+    const base = window.location.origin + window.location.pathname;
+    const shareUrl = `${base}?xp=${id}`;
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopiedId(id);
+      toast.success("🔗 Link copied! Share it with friends.");
+      setTimeout(() => setCopiedId(null), 2500);
+    }).catch(() => {
+      // Fallback for browsers that block clipboard
+      const el = document.createElement("textarea");
+      el.value = shareUrl;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setCopiedId(id);
+      toast.success("🔗 Link copied!");
+      setTimeout(() => setCopiedId(null), 2500);
+    });
+  };
 
   // 2. Handle Post to Supabase
   const handlePost = async (e) => {
@@ -541,6 +582,42 @@ const InterviewExperience = () => {
             display: none !important;
           }
         }
+
+        /* ── NEW: Share button styles ── */
+        .share-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          border: 1.5px solid #e0e7ff;
+          background: #f8f9ff;
+          color: #94a3b8;
+          border-radius: 10px;
+          padding: 5px 10px;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          white-space: nowrap;
+          font-family: 'DM Sans', sans-serif;
+        }
+        .share-btn:hover {
+          background: #eef2ff;
+          border-color: #c7d2fe;
+          color: #6366f1;
+          transform: scale(1.04);
+        }
+        .share-btn.copied {
+          background: #dcfce7;
+          border-color: #86efac;
+          color: #16a34a;
+          animation: sharePop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        @keyframes sharePop {
+          0%   { transform: scale(0.85); }
+          60%  { transform: scale(1.12); }
+          100% { transform: scale(1);    }
+        }
       `}</style>
 
       {/* ── HEADER ── */}
@@ -665,9 +742,17 @@ const InterviewExperience = () => {
                     const gender = detectGender(item.user_name || "");
                     const initials = (item.user_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
                     const diffStyle = DIFF_COLORS[item.difficulty] || DIFF_COLORS["Medium"];
+                    const isCopied = copiedId === item.id; // ── NEW
 
                     return (
-                      <motion.div key={item.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="mb-4">
+                      <motion.div
+                        key={item.id}
+                        id={`xp-card-${item.id}`} // ── NEW: anchor for scroll-to
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.25 }}
+                        className="mb-4"
+                      >
                         <Card className="xp-card">
                           <Card.Body className="p-4">
                             {editingId === item.id ? (
@@ -711,12 +796,28 @@ const InterviewExperience = () => {
                                     </div>
                                   </div>
 
-                                  {item.user_id === sessionUser?.id && (
-                                    <div className="d-flex gap-1">
-                                      <button className="btn btn-sm" style={{ border: '1.5px solid #e0e7ff', borderRadius: 10, color: '#6366f1', padding: '5px 10px' }} onClick={() => startEdit(item)}><Edit3 size={15}/></button>
-                                      <button className="btn btn-sm" style={{ border: '1.5px solid #fee2e2', borderRadius: 10, color: '#ef4444', padding: '5px 10px' }} onClick={() => deleteEntry(item.id, item.user_id)}><Trash2 size={15}/></button>
-                                    </div>
-                                  )}
+                                  {/* ── NEW: Top-right action buttons (share + edit/delete) ── */}
+                                  <div className="d-flex align-items-center gap-1">
+                                    {/* Share button — visible to everyone */}
+                                    <button
+                                      className={`share-btn ${isCopied ? "copied" : ""}`}
+                                      onClick={() => handleShare(item.id)}
+                                      title="Copy link to this experience"
+                                    >
+                                      {isCopied
+                                        ? <><CheckCircle size={13} /> Copied!</>
+                                        : <><Share2 size={13} /> Share</>
+                                      }
+                                    </button>
+
+                                    {/* Edit/Delete — only for post owner */}
+                                    {item.user_id === sessionUser?.id && (
+                                      <>
+                                        <button className="btn btn-sm" style={{ border: '1.5px solid #e0e7ff', borderRadius: 10, color: '#6366f1', padding: '5px 10px' }} onClick={() => startEdit(item)}><Edit3 size={15}/></button>
+                                        <button className="btn btn-sm" style={{ border: '1.5px solid #fee2e2', borderRadius: 10, color: '#ef4444', padding: '5px 10px' }} onClick={() => deleteEntry(item.id, item.user_id)}><Trash2 size={15}/></button>
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
 
                                 <div className="meta-pills">

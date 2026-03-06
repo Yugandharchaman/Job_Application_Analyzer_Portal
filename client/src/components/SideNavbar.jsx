@@ -147,6 +147,131 @@ const StreakCalendarModal = ({ show, onHide, streak, loginHistory }) => {
 };
 
 // ─────────────────────────────────────────────────────────────────
+// ── NEW: COIN HISTORY MODAL (same style as StreakCalendarModal) ──
+// ─────────────────────────────────────────────────────────────────
+const CoinHistoryModal = ({ show, onHide, coins, loginHistory }) => {
+  const today = new Date();
+  const year  = today.getFullYear();
+  const month = today.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDay    = new Date(year, month, 1).getDay();
+  const monthName   = today.toLocaleString('default', { month: 'long' });
+
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  // Days this month where coins were earned (+5 per login day)
+  const earnedDays = new Set(
+    (loginHistory || []).map(dateStr => {
+      const d = new Date(dateStr);
+      return d.getFullYear() === year && d.getMonth() === month ? d.getDate() : null;
+    }).filter(Boolean)
+  );
+
+  const monthEarned = earnedDays.size * 5;
+
+  return (
+    <Modal show={show} onHide={onHide} centered size="sm" contentClassName="streak-modal-content">
+      <Modal.Header closeButton className="border-0 pb-0 px-4 pt-4">
+        <Modal.Title style={{ fontSize: '16px', fontWeight: 800, color: '#06061a' }}>
+          🪙 Coin History
+        </Modal.Title>
+      </Modal.Header>
+      <Modal.Body className="px-4 pb-4">
+
+        {/* Summary cards */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
+          <div style={{
+            flex: 1, background: 'linear-gradient(135deg,#fffbe6,#fff3cd)',
+            border: '1.5px solid #ffe082', borderRadius: '12px',
+            padding: '10px 14px', textAlign: 'center',
+          }}>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#e65c00' }}>{coins}</div>
+            <div style={{ fontSize: '10px', fontWeight: 700, color: '#a0522d', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Coins</div>
+          </div>
+          <div style={{
+            flex: 1, background: 'linear-gradient(135deg,#e8f5e9,#f1f8e9)',
+            border: '1.5px solid #a5d6a7', borderRadius: '12px',
+            padding: '10px 14px', textAlign: 'center',
+          }}>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#2e7d32' }}>+{monthEarned}</div>
+            <div style={{ fontSize: '10px', fontWeight: 700, color: '#388e3c', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>This Month</div>
+          </div>
+        </div>
+
+        {/* How you earn */}
+        <div style={{
+          background: '#f8f9ff', border: '1px solid #e8ecff',
+          borderRadius: '10px', padding: '9px 12px', marginBottom: '12px',
+          fontSize: '11.5px', color: '#555', lineHeight: '1.7',
+        }}>
+          <div style={{ fontWeight: 800, color: '#6c5dff', marginBottom: '3px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>How you earn</div>
+          <div>🪙 <b>+5 coins</b> every day you log in</div>
+          <div style={{ color: '#aaa', fontSize: '10px', marginTop: '1px' }}>Each 🟡 day below = +5 coins earned</div>
+        </div>
+
+        {/* Month label */}
+        <p style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>{monthName} {year}</p>
+
+        {/* Day headers */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '4px', marginBottom: '6px' }}>
+          {['S','M','T','W','T','F','S'].map((d, i) => (
+            <div key={i} style={{ textAlign: 'center', fontSize: '10px', fontWeight: 700, color: '#999', padding: '4px 0' }}>{d}</div>
+          ))}
+        </div>
+
+        {/* Calendar grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '4px' }}>
+          {cells.map((day, i) => {
+            if (!day) return <div key={i} />;
+            const isToday   = day === today.getDate();
+            const hasEarned = earnedDays.has(day);
+            const isPast    = day < today.getDate();
+            return (
+              <div key={i} title={hasEarned ? '+5 🪙 earned' : ''} style={{
+                textAlign: 'center', padding: '6px 2px', borderRadius: '8px',
+                fontSize: '12px', fontWeight: isToday ? 900 : 600,
+                background: isToday
+                  ? 'linear-gradient(135deg,#6c5dff,#b49dff)'
+                  : hasEarned ? 'linear-gradient(135deg,#FFD700,#FFA500)'
+                  : isPast    ? '#f5f5f5'
+                  : 'transparent',
+                color: isToday ? '#fff' : hasEarned ? '#5a2d00' : isPast ? '#ccc' : '#333',
+                border: isToday ? '2px solid #6c5dff' : 'none',
+                position: 'relative',
+                boxShadow: hasEarned && !isToday ? '0 1px 4px rgba(255,165,0,0.35)' : 'none',
+              }}>
+                {day}
+                {hasEarned && !isToday && (
+                  <div style={{ position: 'absolute', bottom: 1, left: '50%', transform: 'translateX(-50%)', fontSize: '7px' }}>🪙</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Legend */}
+        <div style={{ marginTop: '14px', display: 'flex', gap: '12px', fontSize: '11px', color: '#666', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ width: 12, height: 12, borderRadius: 3, background: 'linear-gradient(135deg,#FFD700,#FFA500)' }} /> +5 earned
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ width: 12, height: 12, borderRadius: 3, background: 'linear-gradient(135deg,#6c5dff,#b49dff)' }} /> Today
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ width: 12, height: 12, borderRadius: 3, background: '#f5f5f5', border: '1px solid #ddd' }} /> No login
+          </div>
+        </div>
+      </Modal.Body>
+    </Modal>
+  );
+};
+// ─────────────────────────────────────────────────────────────────
+// END NEW COIN HISTORY MODAL
+// ─────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────
 // NOTIFICATIONS PANEL
 // ─────────────────────────────────────────────────────────────────
 const NotificationsPanel = ({ show, onHide, notifications, onMarkAllRead, onMarkOneRead }) => {
@@ -244,6 +369,7 @@ const SideNavbar = () => {
   const [loginHistory, setLoginHistory] = useState([]);
   const [showCoinBurst, setShowCoinBurst] = useState(false);
   const [showStreakCalendar, setShowStreakCalendar] = useState(false);
+  const [showCoinHistory, setShowCoinHistory] = useState(false); // ── NEW
   const currentUserId = useRef(null);
 
   // ── Notifications ──
@@ -959,6 +1085,14 @@ const SideNavbar = () => {
         loginHistory={loginHistory}
       />
 
+      {/* ── NEW: Coin History Modal ── */}
+      <CoinHistoryModal
+        show={showCoinHistory}
+        onHide={() => setShowCoinHistory(false)}
+        coins={coins}
+        loginHistory={loginHistory}
+      />
+
       {/* ── Notifications Panel ── */}
       <NotificationsPanel
         show={showNotifications}
@@ -1006,7 +1140,8 @@ const SideNavbar = () => {
             <span className="jv-stat-val">{streak}</span>
           </button>
 
-          <button className="jv-stat coins" title="Daily coins">
+          {/* ── CHANGED: now opens coin history modal ── */}
+          <button className="jv-stat coins" onClick={() => setShowCoinHistory(true)} title="Coin history">
             <span className="jv-stat-emoji">🪙</span>
             <span className="jv-stat-val">{coins}</span>
           </button>
@@ -1070,7 +1205,8 @@ const SideNavbar = () => {
             <span className="ge" style={{ animation: 'flamePulse 1.5s infinite', display: 'inline-block' }}>🔥</span>
             <span className="gv">{streak}</span>
           </button>
-          <button className="sidebar-gami-item" title="Coins">
+          {/* ── CHANGED: now opens coin history modal ── */}
+          <button className="sidebar-gami-item" onClick={() => setShowCoinHistory(true)} title="Coin history">
             <span className="ge" style={{ animation: 'coinShine 2s infinite', display: 'inline-block' }}>🪙</span>
             <span className="gv">{coins}</span>
           </button>
@@ -1118,7 +1254,10 @@ const SideNavbar = () => {
                     <span style={{ fontSize: '16px' }}>🔥</span>
                     <span style={{ fontWeight: 800, color: '#fff', fontSize: '13px' }}>{streak} days</span>
                   </div>
-                  <div style={{ background: 'linear-gradient(135deg,#FFD700,#FFA500)', borderRadius: '12px', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  {/* ── CHANGED: now opens coin history modal ── */}
+                  <div
+                    onClick={() => { setShowProfile(false); setTimeout(() => setShowCoinHistory(true), 200); }}
+                    style={{ background: 'linear-gradient(135deg,#FFD700,#FFA500)', borderRadius: '12px', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                     <span style={{ fontSize: '16px' }}>🪙</span>
                     <span style={{ fontWeight: 800, color: '#1a0a00', fontSize: '13px' }}>{coins} pts</span>
                   </div>
