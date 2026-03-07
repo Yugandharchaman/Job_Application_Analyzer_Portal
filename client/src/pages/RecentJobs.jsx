@@ -849,17 +849,12 @@ const RecentJobs = () => {
           @keyframes spin-reverse { 100% { transform: rotate(-360deg); } }
           @keyframes pulse-glow { 0%, 100% { filter: drop-shadow(0 0 2px rgba(108, 93, 255, 0)); } 50% { filter: drop-shadow(0 0 8px rgba(108, 93, 255, 0.5)); } }
 
-          /* ── CHANGE 2: Platform scroller fully removed ── */
-
           .disclaimer-card {
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #310d0d 100%);
             border-radius: 20px; padding: 30px; color: white; display: flex; align-items: flex-start; gap: 20px; margin-bottom: 40px; border-left: 6px solid #ef4444; position: relative; overflow: hidden;
           }
           .disclaimer-card::after { content: ''; position: absolute; top: 0; right: 0; width: 150px; height: 150px; background: radial-gradient(circle, rgba(239, 68, 68, 0.1) 0%, transparent 70%); pointer-events: none; }
 
-          /* ══════════════════════════════════════════════
-             PREMIUM JOB CARD STYLES
-          ══════════════════════════════════════════════ */
           .job-card-clean {
             background: #ffffff;
             border: 1px solid #e8ecf4;
@@ -1079,7 +1074,6 @@ const RecentJobs = () => {
           .degree-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; cursor: pointer; font-size: 0.9rem; transition: background 0.2s; }
           .degree-item:hover { background: #f8f9fc; }
 
-          /* ── CHANGE 1: Email Alerts toggle — plain text + switch, no card/border ── */
           .email-alerts-toggle {
             display: flex; align-items: center; gap: 8px;
             cursor: pointer; transition: all 0.2s ease; user-select: none; padding: 4px 0;
@@ -1120,12 +1114,10 @@ const RecentJobs = () => {
             .recent-jobs-header-left p { font-size: 0.88rem !important; }
           }
 
-          /* ── CHANGE 4: Hide "Direct Career Openings" on ALL screens (desktop + mobile) ── */
           .direct-career-heading { display: none !important; }
 
           .jobs-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px; }
 
-          /* ── CHANGE 2 mobile email toggle ── */
           @media (max-width: 575.98px) {
             .email-toggle-desktop { display: none !important; }
             .email-toggle-mobile {
@@ -1140,7 +1132,6 @@ const RecentJobs = () => {
 
           .tab-email-row { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem; }
 
-          /* ── CHANGE 1: Responsive job card fixes ── */
           @media (max-width: 400px) {
             .info-pills-grid { grid-template-columns: 1fr 1fr; gap: 5px; }
             .info-pill { padding: 5px 7px; gap: 4px; }
@@ -1178,7 +1169,6 @@ const RecentJobs = () => {
             .section-notice-platforms.hidden-on-mobile { display: none !important; }
           }
 
-          /* Applied job card old styles cleaned up */
           .platform-badge-container { position: absolute; top: -12px; right: 16px; z-index: 10; }
           .status-dropdown-toggle { border: 2px solid rgba(255,255,255,0.4) !important; border-radius: 8px !important; font-weight: 600 !important; transition: all 0.2s ease; }
           .today-badge-card { background: linear-gradient(135deg, #11102e 0%, #2a285c 100%); color: #fff; border: none; border-radius: 15px; min-width: 140px; }
@@ -1188,7 +1178,6 @@ const RecentJobs = () => {
           .applied-filter-bar { background: #fff; border-radius: 14px; padding: 16px 20px; border: 1px solid #e2e8f0; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
           .applied-count-badge { background: linear-gradient(135deg, #11102e 0%, #2a285c 100%); color: #fff; border: none; border-radius: 12px; padding: 10px 20px; display: flex; flex-direction: column; align-items: center; min-width: 120px; }
 
-          /* ── CHANGE 5: Profile completion banner for new users ── */
           .profile-banner {
             display: flex; align-items: flex-start; gap: 16px;
             background: linear-gradient(135deg, #fefce8 0%, #fff7ed 100%);
@@ -1206,25 +1195,6 @@ const RecentJobs = () => {
           .profile-banner-content { flex: 1; min-width: 0; }
           .profile-banner-title { font-size: 0.92rem; font-weight: 800; color: #92400e; margin-bottom: 4px; letter-spacing: -0.2px; }
           .profile-banner-desc { font-size: 0.8rem; color: #b45309; line-height: 1.5; margin: 0; }
-          .profile-banner-steps { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-          .profile-banner-step {
-            display: inline-flex; align-items: center; gap: 5px;
-            background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3);
-            border-radius: 20px; padding: 3px 10px;
-            font-size: 0.72rem; font-weight: 700; color: #92400e;
-          }
-          .profile-banner-cta {
-            display: inline-flex; align-items: center; gap: 6px;
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            color: white !important; border: none; border-radius: 10px;
-            padding: 8px 16px; font-size: 0.82rem; font-weight: 700;
-            cursor: pointer; transition: all 0.2s ease; text-decoration: none !important;
-            margin-top: 12px; box-shadow: 0 3px 8px rgba(245,158,11,0.3); white-space: nowrap;
-          }
-          .profile-banner-cta:hover {
-            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
-            transform: translateY(-1px); box-shadow: 0 5px 12px rgba(245,158,11,0.4);
-          }
           .profile-banner-close {
             position: absolute; top: 12px; right: 12px;
             width: 26px; height: 26px; border-radius: 50%;
@@ -1240,7 +1210,6 @@ const RecentJobs = () => {
             .profile-banner-desc { font-size: 0.76rem; }
           }
 
-          /* Platform tip footer */
           .platform-note-footer {
             margin-top: 24px; margin-bottom: 8px;
             background: linear-gradient(135deg, #f8f7ff 0%, #f0f9ff 100%);
@@ -1300,7 +1269,7 @@ const RecentJobs = () => {
         </div>
       )}
 
-      {/* ── CHANGE 1+2: Email Toggle mobile — plain text + toggle, no card ── */}
+      {/* Email Toggle mobile */}
       <div className="email-toggle-mobile">
         <div className="email-alerts-toggle" onClick={handleEmailAlertsToggle} title="Toggle Email Alerts">
           <Mail size={15} color={emailAlerts ? "#6c5dff" : "#94a3b8"} />
@@ -1332,7 +1301,7 @@ const RecentJobs = () => {
         )}
       </div>
 
-      {/* ── CHANGE 5: New User Profile Completion Banner ── */}
+      {/* Profile Completion Banner */}
       {showProfileBanner && currentUser && (
         <div className="profile-banner">
           <div className="profile-banner-icon">
@@ -1350,10 +1319,10 @@ const RecentJobs = () => {
         </div>
       )}
 
-      {/* ── PAGE CONTENT ── */}
+      {/* PAGE CONTENT */}
       <div className="page-content-wrapper">
 
-        {/* ── SECTION 1: Disclaimer only (platforms removed per Change 2) ── */}
+        {/* Disclaimer */}
         <div className={`section-notice-platforms${activeTab !== 'live' ? ' hidden-on-mobile' : ''}`}>
           <div className="disclaimer-card shadow-lg">
             <div style={{ background: 'rgba(239, 68, 68, 0.2)', padding: '12px', borderRadius: '15px', border: '1px solid rgba(239, 68, 68, 0.3)', flexShrink: 0 }}>
@@ -1370,14 +1339,13 @@ const RecentJobs = () => {
           </div>
         </div>
 
-        {/* ── SECTION 2: Job Cards ── */}
+        {/* Job Cards Section */}
         <div className="section-jobs">
           <div>
             <div className="jobs-section-header">
-              {/* ── CHANGE 4: hidden on ALL screens ── */}
               <h3 className="fw-bold mb-0 direct-career-heading" style={{ color: '#1e293b' }}>Direct Career Openings</h3>
 
-              {/* ── CHANGE 1: Email Alerts desktop — plain style ── */}
+              {/* Email Alerts desktop */}
               <div className="email-toggle-desktop">
                 <div className="email-alerts-toggle" onClick={handleEmailAlertsToggle} title="Toggle Email Alerts">
                   <Mail size={15} color={emailAlerts ? "#6c5dff" : "#94a3b8"} />
@@ -1391,7 +1359,7 @@ const RecentJobs = () => {
               </div>
             </div>
 
-            {/* ── TABS ── */}
+            {/* TABS */}
             {!loading && (
               <div className="tab-email-row">
                 <div className="toggle-container">
@@ -1410,7 +1378,7 @@ const RecentJobs = () => {
 
             <div style={{ padding: '0' }}>
 
-              {/* ── LIVE / EXPIRED TAB ── */}
+              {/* LIVE / EXPIRED TAB */}
               {(activeTab === 'live' || activeTab === 'expired') && (
                 <>
                   {(loading || tabLoading) ? (
@@ -1442,6 +1410,11 @@ const RecentJobs = () => {
 
                         return (
                           <Col md={6} lg={4} key={idx} className="mb-4">
+                            {/*
+                              ── CHANGE 1: Removed isApplied from card-disabled.
+                              Card is only greyed out when expired, NOT when applied.
+                              Share button and eligibility badge remain fully interactive after applying.
+                            ──*/}
                             <div id={`job-card-${job.id}`} className={`job-card-clean ${isExpired ? 'card-disabled' : ''}`}>
                               <div className={`job-card-accent ${isExpired ? 'expired-accent' : ''}`}></div>
                               <div className="job-card-inner">
@@ -1450,12 +1423,21 @@ const RecentJobs = () => {
                                     <h2 className="company-name">{job.company_name}</h2>
                                   </div>
                                   <div className="header-right-badges">
-                                    {userProfile && !isExpired && (
+                                    {/*
+                                      ── CHANGE 2: Eligibility badge now shows always (live + applied).
+                                      Removed !isExpired condition — badge shows on expired cards too
+                                      as long as userProfile exists.
+                                    ──*/}
+                                    {userProfile && (
                                       <div className={`eligibility-status ${eligible ? 'status-eligible' : 'status-not-eligible'}`}>
                                         <div className="dot"></div>
                                         {eligible ? "Eligible" : "Not Eligible"}
                                       </div>
                                     )}
+                                    {/*
+                                      ── Share button: always clickable (pointer-events on card-disabled
+                                      only applies when isExpired now, so this works freely after applying).
+                                    ──*/}
                                     <div
                                       className={`share-btn ${copiedJobId === job.id ? 'copied' : ''}`}
                                       onClick={(e) => handleShareJob(job.id, e)}
@@ -1560,7 +1542,7 @@ const RecentJobs = () => {
                 </>
               )}
 
-              {/* ── APPLIED JOBS TAB ── */}
+              {/* APPLIED JOBS TAB */}
               {activeTab === 'applied' && (
                 <div>
                   <div className="applied-filter-bar">
@@ -1640,10 +1622,6 @@ const RecentJobs = () => {
               )}
 
             </div>
-
-            {/* Platform tip footer */}
-            
-
           </div>
         </div>
 
