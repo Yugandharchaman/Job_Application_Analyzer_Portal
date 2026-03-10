@@ -9,7 +9,6 @@ import JobForm from "./components/JobForm";
 import AddedJobs from "./pages/AddedJobs"; 
 import CalendarPage from "./pages/CalendarPage"; 
 import ReminderPage from "./pages/ReminderPage"; 
-import Rejections from "./pages/Rejections";
 import Notes from "./pages/Notes";
 import Resources from "./pages/Resources";
 import RecentJobs from "./pages/RecentJobs";    
@@ -121,7 +120,6 @@ function App() {
           <Route path="/added-jobs" element={<ProtectedRoute session={session}><AddedJobs /></ProtectedRoute>} />
           <Route path="/calendar" element={<ProtectedRoute session={session}><CalendarPage /></ProtectedRoute>} />
           <Route path="/reminders" element={<ProtectedRoute session={session}><ReminderPage /></ProtectedRoute>} />
-          <Route path="/rejections" element={<ProtectedRoute session={session}><Rejections /></ProtectedRoute>} />
           <Route path="/notes" element={<ProtectedRoute session={session}><Notes /></ProtectedRoute>} />
           <Route path="/resources" element={<ProtectedRoute session={session}><Resources /></ProtectedRoute>} />
           <Route path="/recent-jobs" element={<ProtectedRoute session={session}><RecentJobs /></ProtectedRoute>} />

@@ -39,8 +39,9 @@ const RecentJobs = () => {
   const [toastMessage, setToastMessage] = useState("");
   const [toastVariant, setToastVariant] = useState("success");
 
-  // --- NEW: Email Alerts toggle state ---
+  // --- MODIFIED: Email Alerts toggle state — now persisted to Supabase ---
   const [emailAlerts, setEmailAlerts] = useState(false);
+  const [emailAlertsLoading, setEmailAlertsLoading] = useState(false); // NEW: prevent rapid toggling
   const [showEmailToast, setShowEmailToast] = useState(false);
 
   // --- NEW: Share/Copy link state ---
@@ -214,11 +215,38 @@ const RecentJobs = () => {
     setTimeout(() => setShowToast(false), 3000);
   };
 
-  // CHANGE 2: Email Alerts toggle handler
-  const handleEmailAlertsToggle = () => {
-    setEmailAlerts(prev => !prev);
-    setShowEmailToast(true);
-    setTimeout(() => setShowEmailToast(false), 4000);
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // MODIFIED: Email Alerts toggle handler — saves to Supabase profiles table
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const handleEmailAlertsToggle = async () => {
+    // If user is not logged in, show warning
+    if (!currentUser) {
+      showToastMessage("Please login to enable email alerts", "warning");
+      return;
+    }
+
+    // Prevent rapid toggling while saving
+    if (emailAlertsLoading) return;
+
+    const newValue = !emailAlerts;
+    setEmailAlerts(newValue);       // Optimistic update
+    setEmailAlertsLoading(true);
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ email_alerts: newValue })
+      .eq('id', currentUser.id);
+
+    if (error) {
+      console.error("Error saving email_alerts preference:", error);
+      setEmailAlerts(!newValue);    // Revert on error
+      showToastMessage("Failed to save preference. Please try again.", "danger");
+    } else {
+      setShowEmailToast(true);
+      setTimeout(() => setShowEmailToast(false), 4000);
+    }
+
+    setEmailAlertsLoading(false);
   };
 
   // ── NEW: Handle Share/Copy Job Link ──
@@ -271,13 +299,16 @@ const RecentJobs = () => {
         const fetchProfile = async () => {
           const { data } = await supabase
             .from('profiles')
-            .select('role, degree, branch, passout_year, notifications_enabled')
+            .select('role, degree, branch, passout_year, notifications_enabled, email_alerts')
             .eq('id', user.id)
             .single();
 
           if (data) {
             setUserRole(data.role);
             setUserProfile(data);
+
+            // ── MODIFIED: Load email_alerts from Supabase (not local state only) ──
+            setEmailAlerts(data.email_alerts === true);
 
             // ── CHANGE 5: Show profile banner only for new users missing key profile fields ──
             const isNewUser = !data.degree || !data.branch || !data.passout_year;
@@ -298,6 +329,10 @@ const RecentJobs = () => {
             { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` },
             (payload) => {
               setUserProfile(payload.new);
+              // ── MODIFIED: Keep emailAlerts in sync via realtime ──
+              if (typeof payload.new.email_alerts === 'boolean') {
+                setEmailAlerts(payload.new.email_alerts);
+              }
               // ── CHANGE 5: Auto-hide banner once profile is fully filled ──
               const stillIncomplete = !payload.new.degree || !payload.new.branch || !payload.new.passout_year;
               if (!stillIncomplete) setShowProfileBanner(false);
@@ -1054,7 +1089,8 @@ const RecentJobs = () => {
           @keyframes iconPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(108, 93, 255, 0.3); } 50% { box-shadow: 0 0 0 8px rgba(108, 93, 255, 0); } }
           .email-toast-title { font-size: 0.95rem; font-weight: 800; color: #fff; letter-spacing: 0.2px; margin-bottom: 3px; }
           .email-toast-subtitle { font-size: 0.78rem; color: #94a3b8; font-weight: 500; }
-          .email-toast-badge { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; font-size: 0.65rem; font-weight: 800; padding: 3px 8px; border-radius: 20px; letter-spacing: 0.5px; text-transform: uppercase; white-space: nowrap; }
+          .email-toast-badge { background: linear-gradient(135deg, #22c55e, #16a34a); color: white; font-size: 0.65rem; font-weight: 800; padding: 3px 8px; border-radius: 20px; letter-spacing: 0.5px; text-transform: uppercase; white-space: nowrap; }
+          .email-toast-badge.off { background: linear-gradient(135deg, #94a3b8, #64748b); }
           .email-toast-desc { font-size: 0.82rem; color: #94a3b8; line-height: 1.6; margin-top: 14px; padding: 12px 14px; background: rgba(255,255,255,0.04); border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); }
           .email-toast-close-btn { position: absolute; top: 14px; right: 14px; width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,0.08); border: none; color: #64748b; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; line-height: 1; }
           .email-toast-close-btn:hover { background: rgba(255,255,255,0.18); color: #fff; }
@@ -1077,6 +1113,8 @@ const RecentJobs = () => {
           .email-alerts-toggle {
             display: flex; align-items: center; gap: 8px;
             cursor: pointer; transition: all 0.2s ease; user-select: none; padding: 4px 0;
+            opacity: ${emailAlertsLoading ? 0.6 : 1};
+            pointer-events: ${emailAlertsLoading ? 'none' : 'auto'};
           }
           .email-alerts-toggle:hover .email-alerts-label { color: #6c5dff; }
           .email-alerts-label { font-size: 0.85rem; font-weight: 700; color: #475569; transition: color 0.2s; }
@@ -1241,7 +1279,7 @@ const RecentJobs = () => {
         </Toast.Body>
       </Toast>
 
-      {/* Modern Email Alert Toast */}
+      {/* Modern Email Alert Toast — updated to show ON/OFF state */}
       {showEmailToast && (
         <div className="email-toast-modern">
           <div className="email-toast-glow-bar"></div>
@@ -1249,18 +1287,22 @@ const RecentJobs = () => {
             <button className="email-toast-close-btn" onClick={() => setShowEmailToast(false)}>✕</button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
               <div className="email-toast-icon-wrap">
-                <Mail size={20} color="#a78bfa" />
+                <Mail size={20} color={emailAlerts ? "#a78bfa" : "#64748b"} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <div className="email-toast-title">Email Job Alerts</div>
-                  <span className="email-toast-badge">🚧 Coming Soon</span>
+                  <span className={`email-toast-badge ${emailAlerts ? '' : 'off'}`}>
+                    {emailAlerts ? '✓ Enabled' : '✗ Disabled'}
+                  </span>
                 </div>
-                <div className="email-toast-subtitle">Notification preferences</div>
+                <div className="email-toast-subtitle">Preference saved to your profile</div>
               </div>
             </div>
             <div className="email-toast-desc">
-              We're building this feature! Soon you'll receive real-time job alerts directly in your inbox whenever new opportunities matching your profile are posted.
+              {emailAlerts
+                ? "You'll receive email alerts for new jobs matching your degree, branch, and batch year via Brevo."
+                : "You won't receive job alert emails. Toggle back on anytime to resume alerts."}
             </div>
             <div className="email-toast-progress">
               <div className="email-toast-progress-fill"></div>
@@ -1410,11 +1452,6 @@ const RecentJobs = () => {
 
                         return (
                           <Col md={6} lg={4} key={idx} className="mb-4">
-                            {/*
-                              ── CHANGE 1: Removed isApplied from card-disabled.
-                              Card is only greyed out when expired, NOT when applied.
-                              Share button and eligibility badge remain fully interactive after applying.
-                            ──*/}
                             <div id={`job-card-${job.id}`} className={`job-card-clean ${isExpired ? 'card-disabled' : ''}`}>
                               <div className={`job-card-accent ${isExpired ? 'expired-accent' : ''}`}></div>
                               <div className="job-card-inner">
@@ -1423,21 +1460,12 @@ const RecentJobs = () => {
                                     <h2 className="company-name">{job.company_name}</h2>
                                   </div>
                                   <div className="header-right-badges">
-                                    {/*
-                                      ── CHANGE 2: Eligibility badge now shows always (live + applied).
-                                      Removed !isExpired condition — badge shows on expired cards too
-                                      as long as userProfile exists.
-                                    ──*/}
                                     {userProfile && (
                                       <div className={`eligibility-status ${eligible ? 'status-eligible' : 'status-not-eligible'}`}>
                                         <div className="dot"></div>
                                         {eligible ? "Eligible" : "Not Eligible"}
                                       </div>
                                     )}
-                                    {/*
-                                      ── Share button: always clickable (pointer-events on card-disabled
-                                      only applies when isExpired now, so this works freely after applying).
-                                    ──*/}
                                     <div
                                       className={`share-btn ${copiedJobId === job.id ? 'copied' : ''}`}
                                       onClick={(e) => handleShareJob(job.id, e)}
