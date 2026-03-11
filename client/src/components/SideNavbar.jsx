@@ -707,7 +707,7 @@ const SideNavbar = () => {
     { name: "Notes", icon: <FileText size={18} />, path: "/notes" },
     { name: "Resources", icon: <Book size={18} />, path: "/resources" },
     { name: "AI Resume Analyzer", icon: <Search size={18} />, path: "/ai-resume-analyzer" },
-    { name: "Daily News", icon: <Rss size={18} />, path: "/daily-news", hideOnMobile: true },
+    { name: "Tech Reels", icon: <Rss size={18} />, path: "/tech-reels", hideOnMobile: true },
     { name: "Connect with Me", icon: <Target size={18} />, path: "/connect" }
   ];
 
@@ -715,7 +715,7 @@ const SideNavbar = () => {
     { name: "Home", icon: <Home size={20} />, path: "/" },
     { name: "ThinkDaily+", isBrain: true, path: "/interview-Pro" },
     { name: "Interview XP", icon: <MessageCircle size={20} />, path: "/interview-experience" },
-    { name: "Daily News", icon: <Rss size={20} />, path: "/daily-news" },
+    { name: "Tech Reels", icon: <Rss size={20} />, path: "/tech-reels" },
     { name: "Recent Jobs", icon: <Clock size={20} />, path: "/recent-jobs", hasNotification: true },
   ];
 

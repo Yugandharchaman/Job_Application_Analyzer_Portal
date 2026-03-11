@@ -9,8 +9,14 @@ import {
   Clock, Users, Star, Zap, UserCheck, X
 } from "react-feather";
 import { FaDownload } from "react-icons/fa";
+import emailjs from '@emailjs/browser';
 import NoJobsImg from "../assets/No_Jobs.png";
 import { supabase } from "../supabaseClient";
+
+// ── EmailJS Config — replace with your actual IDs ──
+const EMAILJS_SERVICE_ID = "service_s1rqi2h";
+const EMAILJS_TEMPLATE_ID = "template_hj3liuu";
+const EMAILJS_PUBLIC_KEY = "e7t78bogkyklV80NJ";
 
 const RecentJobs = () => {
   const [loading, setLoading] = useState(true);
@@ -41,7 +47,7 @@ const RecentJobs = () => {
 
   // --- MODIFIED: Email Alerts toggle state — now persisted to Supabase ---
   const [emailAlerts, setEmailAlerts] = useState(false);
-  const [emailAlertsLoading, setEmailAlertsLoading] = useState(false); // NEW: prevent rapid toggling
+  const [emailAlertsLoading, setEmailAlertsLoading] = useState(false);
   const [showEmailToast, setShowEmailToast] = useState(false);
 
   // --- NEW: Share/Copy link state ---
@@ -69,13 +75,11 @@ const RecentJobs = () => {
   const [platformAppliedJobs, setPlatformAppliedJobs] = useState([]);
   const [addedJobsLoading, setAddedJobsLoading] = useState(false);
   const [search, setSearch] = useState("");
-  const [filterDate, setFilterDate] = useState(""); // Empty = show ALL applied jobs by default
+  const [filterDate, setFilterDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
   const degreeOptions = ["B.Tech", "BBA", "MBA", "MCA", "B.com", "M.Tech", "BE", "Any Degree"];
   const experienceOptions = ["Fresher", "0-1 Years", "1-2 Years", "2-5 Years", "5+ Years"];
-
-  // ── CHANGE 2: platforms array removed ──
 
   // --- FEATURE: FETCH DATA ---
   const fetchJobs = async () => {
@@ -202,7 +206,6 @@ const RecentJobs = () => {
       showToastMessage("Failed to update status. Please try again.", "danger");
     } else {
       showToastMessage(" Marked as Applied! Good luck with your application!", "success");
-      // Refresh platform applied jobs so Applied tab updates
       if (currentUser) loadAddedJobs(currentUser.id);
     }
   };
@@ -219,17 +222,15 @@ const RecentJobs = () => {
   // MODIFIED: Email Alerts toggle handler — saves to Supabase profiles table
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const handleEmailAlertsToggle = async () => {
-    // If user is not logged in, show warning
     if (!currentUser) {
       showToastMessage("Please login to enable email alerts", "warning");
       return;
     }
 
-    // Prevent rapid toggling while saving
     if (emailAlertsLoading) return;
 
     const newValue = !emailAlerts;
-    setEmailAlerts(newValue);       // Optimistic update
+    setEmailAlerts(newValue);
     setEmailAlertsLoading(true);
 
     const { error } = await supabase
@@ -239,7 +240,7 @@ const RecentJobs = () => {
 
     if (error) {
       console.error("Error saving email_alerts preference:", error);
-      setEmailAlerts(!newValue);    // Revert on error
+      setEmailAlerts(!newValue);
       showToastMessage("Failed to save preference. Please try again.", "danger");
     } else {
       setShowEmailToast(true);
@@ -299,23 +300,35 @@ const RecentJobs = () => {
         const fetchProfile = async () => {
           const { data } = await supabase
             .from('profiles')
-            .select('role, degree, branch, passout_year, notifications_enabled, email_alerts')
+            .select('role, degree, branch, passout_year, notifications_enabled, email_alerts, email')
             .eq('id', user.id)
             .single();
 
           if (data) {
             setUserRole(data.role);
             setUserProfile(data);
-
-            // ── MODIFIED: Load email_alerts from Supabase (not local state only) ──
             setEmailAlerts(data.email_alerts === true);
 
-            // ── CHANGE 5: Show profile banner only for new users missing key profile fields ──
             const isNewUser = !data.degree || !data.branch || !data.passout_year;
             const dismissed = localStorage.getItem(`profile_banner_dismissed_${user.id}`);
             if (isNewUser && !dismissed) {
               setShowProfileBanner(true);
             }
+          }
+
+          // ── FIX: Ensure email is always stored in profiles so alerts work ──
+          // If profiles.email is missing, backfill it from auth session
+          const { data: profileCheck } = await supabase
+            .from('profiles')
+            .select('email')
+            .eq('id', user.id)
+            .single();
+
+          if (!profileCheck?.email && user.email) {
+            await supabase
+              .from('profiles')
+              .update({ email: user.email })
+              .eq('id', user.id);
           }
         };
 
@@ -329,11 +342,9 @@ const RecentJobs = () => {
             { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` },
             (payload) => {
               setUserProfile(payload.new);
-              // ── MODIFIED: Keep emailAlerts in sync via realtime ──
               if (typeof payload.new.email_alerts === 'boolean') {
                 setEmailAlerts(payload.new.email_alerts);
               }
-              // ── CHANGE 5: Auto-hide banner once profile is fully filled ──
               const stillIncomplete = !payload.new.degree || !payload.new.branch || !payload.new.passout_year;
               if (!stillIncomplete) setShowProfileBanner(false);
             })
@@ -480,6 +491,13 @@ const RecentJobs = () => {
     setNewJob({ ...newJob, eligible_degree: currentDegrees.join(", ") });
   };
 
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // FIX: handleAdminSubmit — email lookup no longer uses auth.admin
+  // (which requires service role key and fails on client).
+  // Now reads email directly from profiles.email column instead.
+  // Make sure your profiles table has an `email` TEXT column and
+  // it is populated (the backfill logic above handles this on login).
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const handleAdminSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -498,7 +516,7 @@ const RecentJobs = () => {
       experience: newJob.experience
     };
 
-    const { error } = await supabase.from('admin_jobs').insert([submissionData]);
+    const { data: insertedJob, error } = await supabase.from('admin_jobs').insert([submissionData]).select('id').single();
 
     if (error) {
       console.error("Submission error:", error);
@@ -512,7 +530,64 @@ const RecentJobs = () => {
         eligible_degree: "B.Tech", expiry_date: "", apply_link: "",
         min_cgpa: "", experience: "Fresher"
       });
+
+      // ── FIX: Read email directly from profiles.email (no auth.admin call) ──
+      try {
+        const { data: alertUsers, error: fetchErr } = await supabase
+          .from('profiles')
+          .select('id, degree, branch, passout_year, email_alerts, email, full_name')
+          .eq('email_alerts', true);
+
+        if (fetchErr) {
+          console.error("Error fetching alert users:", fetchErr);
+        }
+
+        if (alertUsers && alertUsers.length > 0) {
+          for (const profile of alertUsers) {
+            // Skip if no email stored in profile
+            if (!profile.email) {
+              console.warn(`No email found in profiles for user ${profile.id} — skipping alert`);
+              continue;
+            }
+
+            const degreeMatch = submissionData.eligible_degree === "Any Degree" ||
+              (profile.degree && submissionData.eligible_degree.toLowerCase().includes(profile.degree.toLowerCase()));
+            const branchMatch = submissionData.eligible_branches === "All Branches" ||
+              (profile.branch && submissionData.eligible_branches.toLowerCase().includes(profile.branch.toLowerCase()));
+            const yearMatch = !submissionData.passout_year ||
+              (profile.passout_year && submissionData.passout_year.toString().includes(profile.passout_year.toString()));
+
+            if (degreeMatch && branchMatch && yearMatch) {
+              try {
+                await emailjs.send(
+                  EMAILJS_SERVICE_ID,
+                  EMAILJS_TEMPLATE_ID,
+                  {
+                    to_email: profile.email,
+                    user_name: profile.full_name || "there",
+                    portal_job_link: `https://job-application-analyzer-portal.vercel.app/recent-jobs?job=${insertedJob.id}`,
+                    company: submissionData.company_name,
+                    role: submissionData.role,
+                    salary: submissionData.salary || "As per norms",
+                    location: submissionData.location || "Multiple",
+                    deadline: submissionData.expiry_date || "Open",
+                    experience: submissionData.experience || "Fresher",
+                    apply_link: submissionData.apply_link,
+                  },
+                  EMAILJS_PUBLIC_KEY
+                );
+                console.log(`✅ Alert sent to ${profile.email}`);
+              } catch (emailErr) {
+                console.error(`Failed to send alert to ${profile.email}:`, emailErr);
+              }
+            }
+          }
+        }
+      } catch (emailErr) {
+        console.error("Email alert block error:", emailErr);
+      }
     }
+
     setIsSubmitting(false);
   };
 
@@ -634,10 +709,8 @@ const RecentJobs = () => {
       return (
         <Col key={`platform-${jobItem.id}`} xs={12} md={6} lg={4} className="mb-4">
           <div className="job-card-clean" style={{ height: '100%' }}>
-            {/* Purple gradient accent — same as Live Job card */}
             <div className="job-card-accent"></div>
             <div className="job-card-inner">
-              {/* Header: company + status badge dropdown */}
               <div className="job-card-header">
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <h2 className="company-name">{job.company_name}</h2>
@@ -668,7 +741,6 @@ const RecentJobs = () => {
                 </div>
               </div>
 
-              {/* Role */}
               <div className="job-role">
                 <Briefcase size={12} style={{ marginRight: 5, verticalAlign: 'middle', opacity: 0.7 }} />
                 {job.role}
@@ -676,7 +748,6 @@ const RecentJobs = () => {
 
               <div className="info-divider"></div>
 
-              {/* Info pills — matching Live Job card pill layout */}
               <div className="info-pills-grid">
                 <div className="info-pill">
                   <div className="info-pill-icon" style={{ background: "#ede9ff" }}>
@@ -716,7 +787,6 @@ const RecentJobs = () => {
                 </div>
               </div>
 
-              {/* View Job Details button — same style as Apply Now */}
               <a
                 href={job.apply_link}
                 target="_blank"
@@ -739,10 +809,8 @@ const RecentJobs = () => {
       return (
         <Col key={job.id || index} xs={12} md={6} lg={4} className="mb-4">
           <div className="job-card-clean" style={{ height: '100%' }}>
-            {/* Blue-purple accent for manual jobs */}
             <div style={{ height: 4, background: 'linear-gradient(90deg, #0284c7 0%, #38bdf8 50%, #6c5dff 100%)', width: '100%', flexShrink: 0 }}></div>
             <div className="job-card-inner">
-              {/* Header */}
               <div className="job-card-header">
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <h2 className="company-name">{job.company}</h2>
@@ -773,7 +841,6 @@ const RecentJobs = () => {
                 </div>
               </div>
 
-              {/* Role */}
               <div className="job-role">
                 <Briefcase size={12} style={{ marginRight: 5, verticalAlign: 'middle', opacity: 0.7 }} />
                 {job.role}
@@ -781,7 +848,6 @@ const RecentJobs = () => {
 
               <div className="info-divider"></div>
 
-              {/* Info pills */}
               <div className="info-pills-grid">
                 <div className="info-pill">
                   <div className="info-pill-icon" style={{ background: "#f0f9ff" }}>
@@ -830,7 +896,6 @@ const RecentJobs = () => {
                     </div>
                   </div>
                 )}
-                {/* Resume pill */}
                 <div className="info-pill info-pill-full" style={{ justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
                     <div className="info-pill-icon" style={{ background: "#fdf4ff" }}>
@@ -1279,7 +1344,7 @@ const RecentJobs = () => {
         </Toast.Body>
       </Toast>
 
-      {/* Modern Email Alert Toast — updated to show ON/OFF state */}
+      {/* Modern Email Alert Toast */}
       {showEmailToast && (
         <div className="email-toast-modern">
           <div className="email-toast-glow-bar"></div>
