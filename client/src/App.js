@@ -126,7 +126,7 @@ function App() {
           <Route path="/interview-experience" element={<ProtectedRoute session={session}><InterviewExperience /></ProtectedRoute>} />
           <Route path="/connect" element={<ProtectedRoute session={session}><NetworkNode /></ProtectedRoute>} />
           <Route path="/ai-resume-analyzer" element={<ProtectedRoute session={session}><AIResumerAnalyzer /></ProtectedRoute>} /> 
-          <Route path="/tech-reels" element={<ProtectedRoute session={session}><DailyNews /></ProtectedRoute>} /> 
+          <Route path="/tech-Feed" element={<ProtectedRoute session={session}><DailyNews /></ProtectedRoute>} /> 
 
           {/* Catch-all: Redirects any typos or unknown URLs to Dashboard */}
           <Route path="*" element={<Navigate to="/" replace />} />

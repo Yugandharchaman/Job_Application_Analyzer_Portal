@@ -147,7 +147,7 @@ const StreakCalendarModal = ({ show, onHide, streak, loginHistory }) => {
 };
 
 // ─────────────────────────────────────────────────────────────────
-// ── NEW: COIN HISTORY MODAL (same style as StreakCalendarModal) ──
+// COIN HISTORY MODAL
 // ─────────────────────────────────────────────────────────────────
 const CoinHistoryModal = ({ show, onHide, coins, loginHistory }) => {
   const today = new Date();
@@ -161,7 +161,6 @@ const CoinHistoryModal = ({ show, onHide, coins, loginHistory }) => {
   for (let i = 0; i < firstDay; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
-  // Days this month where coins were earned (+5 per login day)
   const earnedDays = new Set(
     (loginHistory || []).map(dateStr => {
       const d = new Date(dateStr);
@@ -179,8 +178,6 @@ const CoinHistoryModal = ({ show, onHide, coins, loginHistory }) => {
         </Modal.Title>
       </Modal.Header>
       <Modal.Body className="px-4 pb-4">
-
-        {/* Summary cards */}
         <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
           <div style={{
             flex: 1, background: 'linear-gradient(135deg,#fffbe6,#fff3cd)',
@@ -200,7 +197,6 @@ const CoinHistoryModal = ({ show, onHide, coins, loginHistory }) => {
           </div>
         </div>
 
-        {/* How you earn */}
         <div style={{
           background: '#f8f9ff', border: '1px solid #e8ecff',
           borderRadius: '10px', padding: '9px 12px', marginBottom: '12px',
@@ -211,17 +207,14 @@ const CoinHistoryModal = ({ show, onHide, coins, loginHistory }) => {
           <div style={{ color: '#aaa', fontSize: '10px', marginTop: '1px' }}>Each 🟡 day below = +5 coins earned</div>
         </div>
 
-        {/* Month label */}
         <p style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>{monthName} {year}</p>
 
-        {/* Day headers */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '4px', marginBottom: '6px' }}>
           {['S','M','T','W','T','F','S'].map((d, i) => (
             <div key={i} style={{ textAlign: 'center', fontSize: '10px', fontWeight: 700, color: '#999', padding: '4px 0' }}>{d}</div>
           ))}
         </div>
 
-        {/* Calendar grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '4px' }}>
           {cells.map((day, i) => {
             if (!day) return <div key={i} />;
@@ -251,7 +244,6 @@ const CoinHistoryModal = ({ show, onHide, coins, loginHistory }) => {
           })}
         </div>
 
-        {/* Legend */}
         <div style={{ marginTop: '14px', display: 'flex', gap: '12px', fontSize: '11px', color: '#666', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <div style={{ width: 12, height: 12, borderRadius: 3, background: 'linear-gradient(135deg,#FFD700,#FFA500)' }} /> +5 earned
@@ -267,9 +259,6 @@ const CoinHistoryModal = ({ show, onHide, coins, loginHistory }) => {
     </Modal>
   );
 };
-// ─────────────────────────────────────────────────────────────────
-// END NEW COIN HISTORY MODAL
-// ─────────────────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────────
 // NOTIFICATIONS PANEL
@@ -279,16 +268,32 @@ const NotificationsPanel = ({ show, onHide, notifications, onMarkAllRead, onMark
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
+  // Group notifications by type
+  const grouped = {
+    jobs:          notifications.filter(n => n.id?.startsWith('job_')),
+    expiring:      notifications.filter(n => n.id?.startsWith('expiry_')),
+    experiences:   notifications.filter(n => n.id?.startsWith('xp_')),
+    announcements: notifications.filter(n => n.id?.startsWith('announcement_')),
+  };
+
+  const groupLabels = [
+    { key: 'expiring',      label: '⚠️ Expiring Soon',      items: grouped.expiring },
+    { key: 'jobs',          label: '🆕 New Job Postings',    items: grouped.jobs },
+    { key: 'experiences',   label: '💬 New Experiences',     items: grouped.experiences },
+    { key: 'announcements', label: '📢 Announcements',       items: grouped.announcements },
+  ].filter(g => g.items.length > 0);
+
   return (
     <>
       <div onClick={onHide} style={{ position: 'fixed', inset: 0, zIndex: 2090, background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(3px)' }} />
       <div style={{
-        position: 'fixed', top: '72px', right: '12px', width: '320px', maxHeight: '72vh',
+        position: 'fixed', top: '72px', right: '12px', width: '340px', maxHeight: '75vh',
         background: '#fff', borderRadius: '20px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
         zIndex: 2100, overflow: 'hidden',
         animation: 'notifSlideDown 0.28s cubic-bezier(0.34,1.56,0.64,1)',
         border: '1px solid rgba(108,93,255,0.15)',
       }}>
+        {/* Header */}
         <div style={{ padding: '14px 18px 10px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h6 style={{ margin: 0, fontWeight: 800, color: '#06061a', fontSize: '14px' }}>
             🔔 Notifications
@@ -310,37 +315,68 @@ const NotificationsPanel = ({ show, onHide, notifications, onMarkAllRead, onMark
             <button onClick={onHide} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999', padding: '2px' }}><X size={16} /></button>
           </div>
         </div>
-        <div style={{ overflowY: 'auto', maxHeight: 'calc(72vh - 56px)' }}>
+
+        {/* Body */}
+        <div style={{ overflowY: 'auto', maxHeight: 'calc(75vh - 56px)' }}>
           {notifications.length === 0 ? (
             <div style={{ padding: '40px 20px', textAlign: 'center', color: '#aaa' }}>
               <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔕</div>
               <div style={{ fontSize: '13px' }}>No notifications yet</div>
             </div>
-          ) : notifications.map((n, i) => (
-            <div
-              key={n.id}
-              onClick={() => !n.is_read && onMarkOneRead(n.id)}
-              style={{
-                padding: '12px 18px', borderBottom: '1px solid #f8f8f8',
-                display: 'flex', gap: '11px', alignItems: 'flex-start',
-                background: !n.is_read ? 'rgba(108,93,255,0.05)' : '#fff',
-                cursor: !n.is_read ? 'pointer' : 'default',
-                animation: `notifItemIn 0.3s ${i * 0.04}s both`,
-                transition: 'background 0.2s',
-              }}
-            >
-              <div style={{ fontSize: '18px', flexShrink: 0, marginTop: '2px' }}>{n.icon}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '12.5px', fontWeight: n.is_read ? 500 : 700, color: n.is_read ? '#555' : '#06061a', lineHeight: '1.4', marginBottom: '3px' }}>
-                  {n.title}
+          ) : (
+            groupLabels.map(group => (
+              <div key={group.key}>
+                {/* Group label */}
+                <div style={{
+                  padding: '8px 18px 4px',
+                  fontSize: '10px', fontWeight: 800,
+                  textTransform: 'uppercase', letterSpacing: '0.8px',
+                  color: '#94a3b8', background: '#fafafa',
+                  borderBottom: '1px solid #f4f4f4',
+                }}>
+                  {group.label}
                 </div>
-                <div style={{ fontSize: '10px', color: '#bbb' }}>{n.timeLabel}</div>
+                {group.items.map((n, i) => (
+                  <div
+                    key={n.id}
+                    onClick={() => {
+                      if (!n.is_read) onMarkOneRead(n.id);
+                      if (n.navPath) {
+                        onHide();
+                        window.location.href = n.navPath;
+                      }
+                    }}
+                    style={{
+                      padding: '11px 18px', borderBottom: '1px solid #f8f8f8',
+                      display: 'flex', gap: '11px', alignItems: 'flex-start',
+                      background: !n.is_read ? 'rgba(108,93,255,0.05)' : '#fff',
+                      cursor: 'pointer',
+                      animation: `notifItemIn 0.3s ${i * 0.04}s both`,
+                      transition: 'background 0.2s',
+                    }}
+                  >
+                    <div style={{ fontSize: '18px', flexShrink: 0, marginTop: '2px' }}>{n.icon}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{
+                        fontSize: '12px', fontWeight: n.is_read ? 500 : 700,
+                        color: n.is_read ? '#555' : '#06061a',
+                        lineHeight: '1.4', marginBottom: '3px'
+                      }}>
+                        {n.title}
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#bbb', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {n.navPath && <span style={{ color: '#6c5dff', fontWeight: 700 }}>Tap to view →</span>}
+                        <span>{n.timeLabel}</span>
+                      </div>
+                    </div>
+                    {!n.is_read && (
+                      <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#6c5dff', flexShrink: 0, marginTop: '6px' }} />
+                    )}
+                  </div>
+                ))}
               </div>
-              {!n.is_read && (
-                <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#6c5dff', flexShrink: 0, marginTop: '6px' }} />
-              )}
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </>
@@ -369,7 +405,7 @@ const SideNavbar = () => {
   const [loginHistory, setLoginHistory] = useState([]);
   const [showCoinBurst, setShowCoinBurst] = useState(false);
   const [showStreakCalendar, setShowStreakCalendar] = useState(false);
-  const [showCoinHistory, setShowCoinHistory] = useState(false); // ── NEW
+  const [showCoinHistory, setShowCoinHistory] = useState(false);
   const currentUserId = useRef(null);
 
   // ── Notifications ──
@@ -392,57 +428,126 @@ const SideNavbar = () => {
   const isOnDashboard = location.pathname === '/';
 
   // ─────────────────────────────────────────────────────────────
-  // NOTIFICATIONS
+  // NOTIFICATIONS — ENHANCED (jobs, expiry, experiences, announcements)
   // ─────────────────────────────────────────────────────────────
   const fetchNotifications = useCallback(async (userId) => {
     if (!userId) return;
     try {
       const oneMonthAgo = new Date();
       oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+      const oneMonthAgoISO = oneMonthAgo.toISOString();
+      const todayStr = new Date().toISOString().split('T')[0];
 
-      const { data: updates, error } = await supabase
-        .from("hiring_updates")
-        .select("*")
-        .gte("created_at", oneMonthAgo.toISOString())
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      const { data: readRows } = await supabase
-        .from("notification_reads")
-        .select("notification_id")
-        .eq("user_id", userId);
+      // Fetch all 4 sources + read records in parallel
+      const [
+        { data: updates },
+        { data: adminJobs },
+        { data: experiences },
+        { data: readRows }
+      ] = await Promise.all([
+        supabase
+          .from("hiring_updates")
+          .select("*")
+          .gte("created_at", oneMonthAgoISO)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("admin_jobs")
+          .select("id, company_name, role, expiry_date, created_at")
+          .gte("created_at", oneMonthAgoISO)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("experiences")
+          .select("id, user_name, company, role, created_at")
+          .gte("created_at", oneMonthAgoISO)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("notification_reads")
+          .select("notification_id")
+          .eq("user_id", userId)
+      ]);
 
       const readSet = new Set((readRows || []).map(r => String(r.notification_id)));
 
-      const formatted = (updates || []).map(u => {
-        const createdAt = new Date(u.created_at);
-        const now = new Date();
-        const diffMs = now - createdAt;
+      const getTimeLabel = (createdAt) => {
+        const diffMs = new Date() - new Date(createdAt);
         const diffMins = Math.floor(diffMs / 60000);
         const diffHours = Math.floor(diffMs / 3600000);
         const diffDays = Math.floor(diffMs / 86400000);
-        let timeLabel = '';
-        if (diffMins < 1) timeLabel = 'Just now';
-        else if (diffMins < 60) timeLabel = `${diffMins}m ago`;
-        else if (diffHours < 24) timeLabel = `${diffHours}h ago`;
-        else timeLabel = `${diffDays}d ago`;
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        return `${diffDays}d ago`;
+      };
 
+      // 1. Announcements (hiring_updates)
+      const announcementNotifs = (updates || []).map(u => {
         const content = u.content || '';
         const isDeadline = content.toLowerCase().includes('deadline') || content.toLowerCase().includes('expire') || content.toLowerCase().includes('last date');
         const isJob = content.toLowerCase().includes('job') || content.toLowerCase().includes('hiring') || content.toLowerCase().includes('walk') || content.toLowerCase().includes('drive');
-
         return {
-          id: u.id,
+          id: `announcement_${u.id}`,
           title: content,
           icon: isDeadline ? '⏰' : isJob ? '💼' : '📢',
-          timeLabel,
-          is_read: readSet.has(String(u.id)),
+          timeLabel: getTimeLabel(u.created_at),
+          is_read: readSet.has(`announcement_${u.id}`),
           created_at: u.created_at,
+          navPath: '/recent-jobs',
         };
       });
 
-      setNotifications(formatted);
+      // 2. New job postings (live jobs only)
+      const jobPostNotifs = (adminJobs || [])
+        .filter(j => j.expiry_date >= todayStr)
+        .map(j => ({
+          id: `job_${j.id}`,
+          title: `${j.company_name} is hiring for ${j.role}`,
+          icon: '🆕',
+          timeLabel: getTimeLabel(j.created_at),
+          is_read: readSet.has(`job_${j.id}`),
+          created_at: j.created_at,
+          navPath: `/recent-jobs?job=${j.id}`,
+        }));
+
+      // 3. Expiring jobs (within 2 days)
+      const expiringNotifs = (adminJobs || [])
+        .filter(j => {
+          if (!j.expiry_date) return false;
+          const daysLeft = Math.ceil((new Date(j.expiry_date) - new Date()) / (1000 * 60 * 60 * 24));
+          return daysLeft >= 0 && daysLeft <= 2;
+        })
+        .map(j => {
+          const daysLeft = Math.ceil((new Date(j.expiry_date) - new Date()) / (1000 * 60 * 60 * 24));
+          return {
+            id: `expiry_${j.id}`,
+            title: `${j.company_name} — ${j.role} expires ${daysLeft === 0 ? 'Today!' : `in ${daysLeft} day${daysLeft > 1 ? 's' : ''}`}`,
+            icon: '⚠️',
+            timeLabel: `Deadline: ${j.expiry_date}`,
+            is_read: readSet.has(`expiry_${j.id}`),
+            created_at: j.created_at,
+            navPath: `/recent-jobs?job=${j.id}`,
+          };
+        });
+
+      // 4. New experiences shared
+      const experienceNotifs = (experiences || []).map(xp => ({
+        id: `xp_${xp.id}`,
+        title: `${xp.user_name || 'Someone'} shared their ${xp.company} interview experience — Read Now`,
+        icon: '💬',
+        timeLabel: getTimeLabel(xp.created_at),
+        is_read: readSet.has(`xp_${xp.id}`),
+        created_at: xp.created_at,
+        navPath: `/interview-experience?xp=${xp.id}`,
+      }));
+
+      // Merge all & sort newest first
+      const all = [
+        ...announcementNotifs,
+        ...jobPostNotifs,
+        ...expiringNotifs,
+        ...experienceNotifs,
+      ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      setNotifications(all);
     } catch (err) {
       console.error('fetchNotifications error:', err);
     }
@@ -454,7 +559,7 @@ const SideNavbar = () => {
     if (!currentUserId.current) return;
     const unread = notifications.filter(n => !n.is_read);
     if (unread.length === 0) return;
-    const rows = unread.map(n => ({ user_id: currentUserId.current, notification_id: n.id }));
+    const rows = unread.map(n => ({ user_id: currentUserId.current, notification_id: String(n.id) }));
     await supabase.from("notification_reads").upsert(rows, { onConflict: 'user_id,notification_id' });
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
   }, [notifications]);
@@ -462,7 +567,7 @@ const SideNavbar = () => {
   const handleMarkOneRead = useCallback(async (notifId) => {
     if (!currentUserId.current) return;
     await supabase.from("notification_reads").upsert(
-      [{ user_id: currentUserId.current, notification_id: notifId }],
+      [{ user_id: currentUserId.current, notification_id: String(notifId) }],
       { onConflict: 'user_id,notification_id' }
     );
     setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, is_read: true } : n));
@@ -572,7 +677,7 @@ const SideNavbar = () => {
     init();
   }, []);
 
-  // ── Real-time notifications ──
+  // ── Real-time: new hiring_update announcement ──
   useEffect(() => {
     const channel = supabase
       .channel("realtime-notif-new")
@@ -585,12 +690,61 @@ const SideNavbar = () => {
         const isDeadline = content.toLowerCase().includes('deadline') || content.toLowerCase().includes('expire');
         const isJob = content.toLowerCase().includes('job') || content.toLowerCase().includes('hiring');
         const newNotif = {
-          id: u.id,
+          id: `announcement_${u.id}`,
           title: content,
           icon: isDeadline ? '⏰' : isJob ? '💼' : '📢',
           timeLabel: 'Just now',
           is_read: false,
           created_at: u.created_at,
+          navPath: '/recent-jobs',
+        };
+        setNotifications(prev => [newNotif, ...prev]);
+      })
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, []);
+
+  // ── Real-time: new admin_job posted ──
+  useEffect(() => {
+    const channel = supabase
+      .channel("realtime-new-job")
+      .on("postgres_changes", {
+        event: "INSERT", schema: "public", table: "admin_jobs"
+      }, (payload) => {
+        if (!currentUserId.current) return;
+        const j = payload.new;
+        const newNotif = {
+          id: `job_${j.id}`,
+          title: `${j.company_name} is hiring for ${j.role}`,
+          icon: '🆕',
+          timeLabel: 'Just now',
+          is_read: false,
+          created_at: j.created_at,
+          navPath: `/recent-jobs?job=${j.id}`,
+        };
+        setNotifications(prev => [newNotif, ...prev]);
+      })
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, []);
+
+  // ── Real-time: new experience shared ──
+  useEffect(() => {
+    const channel = supabase
+      .channel("realtime-new-xp")
+      .on("postgres_changes", {
+        event: "INSERT", schema: "public", table: "experiences"
+      }, (payload) => {
+        if (!currentUserId.current) return;
+        const xp = payload.new;
+        const newNotif = {
+          id: `xp_${xp.id}`,
+          title: `${xp.user_name || 'Someone'} shared their ${xp.company} interview experience — Read Now`,
+          icon: '💬',
+          timeLabel: 'Just now',
+          is_read: false,
+          created_at: xp.created_at,
+          navPath: `/interview-experience?xp=${xp.id}`,
         };
         setNotifications(prev => [newNotif, ...prev]);
       })
@@ -707,7 +861,7 @@ const SideNavbar = () => {
     { name: "Notes", icon: <FileText size={18} />, path: "/notes" },
     { name: "Resources", icon: <Book size={18} />, path: "/resources" },
     { name: "AI Resume Analyzer", icon: <Search size={18} />, path: "/ai-resume-analyzer" },
-    { name: "Tech Reels", icon: <Rss size={18} />, path: "/tech-reels", hideOnMobile: true },
+    { name: "Tech Feed", icon: <Rss size={18} />, path: "/tech-Feed", hideOnMobile: true },
     { name: "Connect with Me", icon: <Target size={18} />, path: "/connect" }
   ];
 
@@ -887,7 +1041,6 @@ const SideNavbar = () => {
           box-shadow: 0 1px 12px rgba(0,0,0,0.08);
         }
 
-        /* LEFT: profile button */
         .jv-profile-btn {
           display: flex; align-items: center; gap: 10px;
           background: none; border: none; padding: 0;
@@ -913,21 +1066,16 @@ const SideNavbar = () => {
           max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
         .jv-profile-sub { color: #94a3b8; font-size: 9.5px; font-weight: 500; }
-
-        /* Disable profile button when sidebar is open on non-dashboard */
         .jv-profile-btn.sidebar-disabled { pointer-events: none; opacity: 0.5; }
 
-        /* CENTER logo */
         .jv-topbar-logo {
           position: absolute; left: 50%; transform: translateX(-50%);
           color: #0f172a; font-size: 15px; font-weight: 900;
           letter-spacing: -0.2px; white-space: nowrap; pointer-events: none;
         }
 
-        /* RIGHT: no card backgrounds — plain icon+text style */
         .jv-topbar-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
 
-        /* Streak / Coins */
         .jv-stat {
           display: flex; align-items: center; gap: 3px;
           background: none; border: none; padding: 0;
@@ -938,7 +1086,6 @@ const SideNavbar = () => {
         .jv-stat.streak .jv-stat-emoji { animation: flamePulse 1.5s ease-in-out infinite; display: inline-block; }
         .jv-stat.coins  .jv-stat-emoji { animation: coinShine 2s ease-in-out infinite; display: inline-block; }
 
-        /* Bell */
         .jv-bell {
           position: relative; display: flex; align-items: center; justify-content: center;
           background: none; border: none; padding: 2px;
@@ -1084,7 +1231,7 @@ const SideNavbar = () => {
         loginHistory={loginHistory}
       />
 
-      {/* ── NEW: Coin History Modal ── */}
+      {/* ── Coin History Modal ── */}
       <CoinHistoryModal
         show={showCoinHistory}
         onHide={() => setShowCoinHistory(false)}
@@ -1102,7 +1249,7 @@ const SideNavbar = () => {
       />
 
       {/* ════════════════════════════════════════════════════════
-          TOP BAR (mobile ≤1024px only) — WHITE
+          TOP BAR (mobile ≤1024px only)
           ════════════════════════════════════════════════════════ */}
       <div className="jv-topbar">
         {/* LEFT: Profile avatar */}
@@ -1139,7 +1286,6 @@ const SideNavbar = () => {
             <span className="jv-stat-val">{streak}</span>
           </button>
 
-          {/* ── CHANGED: now opens coin history modal ── */}
           <button className="jv-stat coins" onClick={() => setShowCoinHistory(true)} title="Coin history">
             <span className="jv-stat-emoji">🪙</span>
             <span className="jv-stat-val">{coins}</span>
@@ -1198,13 +1344,12 @@ const SideNavbar = () => {
           </div>
         </div>
 
-        {/* Desktop gamification */}
+        {/* Desktop gamification row */}
         <div className="sidebar-gami-row">
           <button className="sidebar-gami-item" onClick={() => setShowStreakCalendar(true)} title="Streak">
             <span className="ge" style={{ animation: 'flamePulse 1.5s infinite', display: 'inline-block' }}>🔥</span>
             <span className="gv">{streak}</span>
           </button>
-          {/* ── CHANGED: now opens coin history modal ── */}
           <button className="sidebar-gami-item" onClick={() => setShowCoinHistory(true)} title="Coin history">
             <span className="ge" style={{ animation: 'coinShine 2s infinite', display: 'inline-block' }}>🪙</span>
             <span className="gv">{coins}</span>
@@ -1253,7 +1398,6 @@ const SideNavbar = () => {
                     <span style={{ fontSize: '16px' }}>🔥</span>
                     <span style={{ fontWeight: 800, color: '#fff', fontSize: '13px' }}>{streak} days</span>
                   </div>
-                  {/* ── CHANGED: now opens coin history modal ── */}
                   <div
                     onClick={() => { setShowProfile(false); setTimeout(() => setShowCoinHistory(true), 200); }}
                     style={{ background: 'linear-gradient(135deg,#FFD700,#FFA500)', borderRadius: '12px', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
