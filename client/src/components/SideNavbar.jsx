@@ -869,7 +869,7 @@ const SideNavbar = () => {
     { name: "Home", icon: <Home size={20} />, path: "/" },
     { name: "ThinkDaily+", isBrain: true, path: "/interview-Pro" },
     { name: "Interview XP", icon: <MessageCircle size={20} />, path: "/interview-experience" },
-    { name: "Tech Reels", icon: <Rss size={20} />, path: "/tech-reels" },
+    { name: "Tech Feed", icon: <Rss size={20} />, path: "/tech-Feed" },
     { name: "Recent Jobs", icon: <Clock size={20} />, path: "/recent-jobs", hasNotification: true },
   ];
 
