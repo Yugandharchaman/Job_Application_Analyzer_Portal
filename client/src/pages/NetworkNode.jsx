@@ -1,18 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { Row, Col, Container, Toast, ToastContainer, Form, Button } from "react-bootstrap";
 import emailjs from "@emailjs/browser";
+import QRCode from "react-qr-code";
 import { 
   GitHub, Linkedin, Mail, ArrowRight, 
   Globe, Shield,
   Clock, Zap, Code, Briefcase, Check, Smartphone as MobileIcon,
-  MessageSquare, Send
+  MessageSquare, Send, Share2, X
 } from "react-feather";
+
+const APP_URL = "https://job-application-analyzer-portal.vercel.app/";
 
 const NetworkNode = () => {
   const [showToast, setShowToast] = useState(false);
+  const [toastMsg, setToastMsg] = useState("Email Copied!");
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // Normal Loading Logic
   useEffect(() => {
@@ -22,14 +28,43 @@ const NetworkNode = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (showShareModal) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [showShareModal]);
+
   const handleEmailAction = () => {
     const email = "career.entry.hub@gmail.com";
-    
-    // Strictly copy to clipboard only
     navigator.clipboard.writeText(email).then(() => {
-      // Trigger Toaster Popup
+      setToastMsg("Email Copied!");
       setShowToast(true);
     });
+  };
+
+  const handleCopyAppLink = () => {
+    navigator.clipboard.writeText(APP_URL).then(() => {
+      setLinkCopied(true);
+      setToastMsg("App link copied!");
+      setShowToast(true);
+      setTimeout(() => setLinkCopied(false), 2500);
+    });
+  };
+
+  const handleNativeShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: "JobVault — Job Application Analyzer",
+        text: "Check out this awesome job app tracker! 🚀",
+        url: APP_URL,
+      }).catch(() => {});
+    } else {
+      handleCopyAppLink();
+    }
   };
 
   const handleFeedbackSubmit = (e) => {
@@ -38,8 +73,6 @@ const NetworkNode = () => {
 
     setIsSending(true);
 
-    // --- EmailJS Logic ---
-    // Replace these with your actual IDs from the EmailJS Dashboard
     const SERVICE_ID = "service_exmomhv"; 
     const TEMPLATE_ID = "template_zzx8rx5";
     const PUBLIC_KEY = "MxBE0u0w7vfq2tYrf";
@@ -51,7 +84,7 @@ const NetworkNode = () => {
     };
 
     emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams, PUBLIC_KEY)
-      .then((response) => {
+      .then(() => {
         setIsSending(false);
         setFeedback("");
         alert("Feedback sent! Thank you for your suggestion.");
@@ -129,11 +162,33 @@ const NetworkNode = () => {
           text-decoration: none !important;
           margin-bottom: 15px;
           color: #000;
+          cursor: pointer;
         }
 
         .social-btn:hover {
           background: #000;
           color: #fff !important;
+        }
+
+        .share-btn {
+          width: 100%;
+          padding: 25px;
+          border-radius: 24px;
+          background: linear-gradient(135deg, #6c5dff, #9b8aff);
+          border: none;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          transition: 0.3s;
+          margin-bottom: 15px;
+          color: #fff;
+          cursor: pointer;
+        }
+
+        .share-btn:hover {
+          background: linear-gradient(135deg, #5a4de0, #8a78ff);
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(108,93,255,0.3);
         }
 
         .circle-blur {
@@ -183,9 +238,116 @@ const NetworkNode = () => {
           box-shadow: 0 0 0 4px rgba(108, 93, 255, 0.1);
           outline: none;
         }
+
+        /* ── Share Modal ── */
+        .share-modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.55);
+          backdrop-filter: blur(6px);
+          z-index: 10000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 16px;
+          animation: fadeIn 0.2s ease;
+        }
+
+        .share-modal-box {
+          background: #fff;
+          border-radius: 28px;
+          padding: 32px 28px;
+          width: 100%;
+          max-width: 420px;
+          box-shadow: 0 32px 80px rgba(0,0,0,0.2);
+          animation: slideUp 0.25s cubic-bezier(0.175,0.885,0.32,1.275);
+          position: relative;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+        .share-modal-close {
+          position: absolute;
+          top: 16px; right: 16px;
+          width: 32px; height: 32px;
+          border-radius: 50%;
+          background: #f1f1f1;
+          border: none;
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer;
+          transition: 0.2s;
+        }
+        .share-modal-close:hover { background: #e0e0e0; }
+
+        .qr-wrapper {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 20px;
+          padding: 24px;
+          margin: 20px 0;
+        }
+
+        .copy-link-box {
+          display: flex;
+          align-items: center;
+          background: #f5f5f7;
+          border: 1px solid #e2e8f0;
+          border-radius: 14px;
+          padding: 10px 14px;
+          gap: 10px;
+          margin-top: 16px;
+        }
+
+        .copy-link-url {
+          flex: 1;
+          font-size: 12px;
+          color: #555;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          font-family: monospace;
+        }
+
+        .copy-link-btn {
+          background: ${`#6c5dff`};
+          color: #fff;
+          border: none;
+          border-radius: 10px;
+          padding: 6px 14px;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: 0.2s;
+          flex-shrink: 0;
+        }
+        .copy-link-btn:hover { background: #5a4de0; }
+
+        .native-share-btn {
+          width: 100%;
+          padding: 12px;
+          border-radius: 14px;
+          border: none;
+          background: #000;
+          color: #fff;
+          font-weight: 700;
+          font-size: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          cursor: pointer;
+          transition: 0.2s;
+          margin-top: 12px;
+        }
+        .native-share-btn:hover { background: #222; }
       `}</style>
 
-      {/* --- Fixed Top Toaster --- */}
+      {/* ── Fixed Top Toaster ── */}
       <ToastContainer 
         position="top-center" 
         style={{ 
@@ -193,7 +355,7 @@ const NetworkNode = () => {
           top: '20px', 
           left: '50%', 
           transform: 'translateX(-50%)', 
-          zIndex: 9999,
+          zIndex: 99999,
           width: 'auto'
         }}
       >
@@ -206,10 +368,69 @@ const NetworkNode = () => {
         >
           <Toast.Body className="d-flex align-items-center justify-content-center gap-3 py-3 px-4">
             <Check size={20} color="#6c5dff" />
-            <span className="fw-bold" style={{ fontSize: '14px', whiteSpace: 'nowrap' }}>Email Copied!</span>
+            <span className="fw-bold" style={{ fontSize: '14px', whiteSpace: 'nowrap' }}>{toastMsg}</span>
           </Toast.Body>
         </Toast>
       </ToastContainer>
+
+      {/* ── Share Modal ── */}
+      {showShareModal && (
+        <div className="share-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowShareModal(false); }}>
+          <div className="share-modal-box">
+            <button className="share-modal-close" onClick={() => setShowShareModal(false)}>
+              <X size={16} color="#555" />
+            </button>
+
+            <div style={{ textAlign: "center" }}>
+              <div style={{
+                width: 52, height: 52,
+                background: "linear-gradient(135deg,#6c5dff,#9b8aff)",
+                borderRadius: 16,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                margin: "0 auto 14px"
+              }}>
+                <Share2 size={24} color="#fff" />
+              </div>
+              <h5 style={{ fontWeight: 800, marginBottom: 4 }}>Share JobVault</h5>
+              <p style={{ fontSize: 13, color: "#888", marginBottom: 0 }}>
+                Scan the QR code to install or share the link with friends
+              </p>
+            </div>
+
+            {/* QR Code */}
+            <div className="qr-wrapper">
+              <QRCode
+                value={APP_URL}
+                size={180}
+                bgColor="#f8fafc"
+                fgColor="#1a1a2e"
+                level="H"
+                style={{ borderRadius: 8 }}
+              />
+              <p style={{ fontSize: 11, color: "#94a3b8", marginTop: 12, marginBottom: 0, fontWeight: 600 }}>
+                📱 Scan to open &amp; install as PWA
+              </p>
+            </div>
+
+            {/* Copy link row */}
+            <div className="copy-link-box">
+              <span className="copy-link-url">{APP_URL}</span>
+              <button
+                className="copy-link-btn"
+                onClick={handleCopyAppLink}
+              >
+                {linkCopied ? "✓ Copied!" : "Copy"}
+              </button>
+            </div>
+
+            {/* Native share (mobile) */}
+            <button className="native-share-btn" onClick={handleNativeShare}>
+              <Share2 size={16} />
+              Share via…
+            </button>
+          </div>
+        </div>
+      )}
 
       <Container>
         <div className="position-relative">
@@ -221,11 +442,11 @@ const NetworkNode = () => {
                 <span className="me-2">●</span> AVAILABLE FOR NEW PROJECTS
               </div>
               <h1 className="hero-title mb-4">
-                Let’s build the <br /> 
+                Let's build the <br /> 
                 <span style={{ color: '#6c5dff' }}>future</span> together.
               </h1>
               <p className="text-muted lead" style={{ maxWidth: '600px' }}>
-                I’m Yugandhar Chamana. I specialize in bridging the gap between complex code and intuitive user experiences.
+                I'm Yugandhar Chamana. I specialize in bridging the gap between complex code and intuitive user experiences.
               </p>
             </Col>
           </Row>
@@ -255,6 +476,18 @@ const NetworkNode = () => {
                   <div className="d-flex align-items-center gap-3">
                     <Mail size={22} />
                     <span className="fw-bold">Copy Email Address</span>
+                  </div>
+                  <ArrowRight size={18} />
+                </button>
+
+                {/* ── Share App Button ── */}
+                <button onClick={() => setShowShareModal(true)} className="share-btn">
+                  <div className="d-flex align-items-center gap-3">
+                    <Share2 size={22} />
+                    <div style={{ textAlign: "left" }}>
+                      <div className="fw-bold" style={{ fontSize: 15 }}>Share App With Friends</div>
+                      <div style={{ fontSize: 11, opacity: 0.8, marginTop: 1 }}>QR Code + Copy Link + Install as PWA</div>
+                    </div>
                   </div>
                   <ArrowRight size={18} />
                 </button>
