@@ -4,7 +4,7 @@ import { supabase } from "../supabaseClient";
 import toast, { Toaster } from "react-hot-toast";
 
 // ─────────────────────────────────────────────
-// GK QUESTION BANK — with MCQ options
+// GK QUESTION BANK
 // ─────────────────────────────────────────────
 const GK_QUESTIONS = [
   { q: "What is the national animal of India?", options: ["Snow Leopard", "Bengal Tiger", "Indian Lion", "One-horned Rhino"], correct: 1, cat: "India" },
@@ -111,24 +111,139 @@ function getDailyQuestions(date = new Date()) {
   const caShuffled = shuffleWithSeed(CURRENT_AFFAIRS, (ce * 3141592653 + 9876543) >>> 0);
   return [gkShuffled[gs], gkShuffled[gs + 1], caShuffled[cs]];
 }
-function getDaysUntilSunday() { const d = new Date().getDay(); return d === 0 ? 0 : 7 - d; }
-function isSunday() { return new Date().getDay() === 0; }
 
-// ─── AI MCQ Generator ───
+// ─── Sunday window helpers ───
+// Exam is available ONLY on Sunday (day === 0), 12:00 AM – 11:59 PM
+function isSundayNow() {
+  return new Date().getDay() === 0;
+}
+function getDaysUntilSunday() {
+  const d = new Date().getDay();
+  return d === 0 ? 0 : 7 - d;
+}
+function getCountdownToSunday() {
+  const now = new Date();
+  const day = now.getDay();
+  if (day === 0) {
+    // Sunday — count down to end of day
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
+    const diff = endOfDay - now;
+    return {
+      d: 0,
+      h: Math.floor(diff / 3600000),
+      m: Math.floor((diff % 3600000) / 60000),
+      s: Math.floor((diff % 60000) / 1000),
+      isSunday: true,
+    };
+  }
+  let daysUntil = 7 - day;
+  const nextSunday = new Date(now);
+  nextSunday.setDate(now.getDate() + daysUntil);
+  nextSunday.setHours(0, 0, 0, 0);
+  const diff = nextSunday - now;
+  if (diff <= 0) return { d: 0, h: 0, m: 0, s: 0, isSunday: false };
+  return {
+    d: Math.floor(diff / 86400000),
+    h: Math.floor((diff % 86400000) / 3600000),
+    m: Math.floor((diff % 3600000) / 60000),
+    s: Math.floor((diff % 60000) / 1000),
+    isSunday: false,
+  };
+}
+
+function getISOWeekNumber() {
+  const now = new Date();
+  const start = new Date(Date.UTC(now.getFullYear(), 0, 1));
+  return Math.floor((now - start) / (7 * 24 * 3600 * 1000)) + 1;
+}
+
+// ─── Topic pools ───
+const TOPIC_POOLS = {
+  India:   ["Indian rivers and dams","Indian presidents and prime ministers","Indian states and union territories","Indian freedom struggle leaders","Indian classical music and dance","Indian economy and Five Year Plans","Indian space missions ISRO","Indian national awards Bharat Ratna","Indian sports achievements Olympics","Indian constitution and amendments","Indian military history","Indian ancient history Maurya Gupta"],
+  World:   ["European geography and capitals","South-East Asian countries","African nations and leaders","Latin American history","World heritage sites UNESCO","Nobel Prize winners","Major world rivers and lakes","International treaties and organizations","G7 G20 BRICS nations","Cold War history"],
+  Science: ["Human anatomy and diseases","Solar system and space exploration","Periodic table elements","Laws of physics Newton Einstein","Genetics and DNA biology","Climate and environmental science","Famous scientists discoveries","Chemical reactions and compounds","Mathematics famous theorems","Computer science and internet history"],
+  History: ["Ancient Indian civilizations Indus","Mughal empire history","British colonial India","World War I causes and events","World War II major battles","French and American revolutions","Famous historical explorers","Ancient Greece and Rome","Medieval European history","Post-independence India history"],
+  Sports:  ["Cricket World Cup history","Olympic Games records","Football FIFA tournaments","Indian sports stars achievements","Tennis Grand Slam winners","Commonwealth Games India","Badminton world champions","Formula 1 racing history","Hockey World Cup","Athletics world records"],
+  Tech:    ["Famous technology company founders","History of computers and internet","Artificial intelligence milestones","Space technology satellites","Smartphone evolution history","Social media platforms history","Cybersecurity basics","Renewable energy technology","Biotechnology breakthroughs","Electric vehicles and future tech"],
+  CA:      ["India budget 2024-25 highlights","International summits 2024","Scientific discoveries 2023-24","Sports world championships 2024","India economic milestones 2025","Space missions 2024-2025","India foreign policy 2024","New laws and policies India 2024"],
+};
+function pickRandom(arr, n) {
+  return [...arr].sort(() => Math.random() - 0.5).slice(0, n);
+}
+
 async function generateAIMCQQuestions() {
+  const nonce = Math.floor(Math.random() * 9999999);
+  const ts = Date.now();
+  const indiaTopics  = pickRandom(TOPIC_POOLS.India,   3).join(", ");
+  const worldTopics  = pickRandom(TOPIC_POOLS.World,   2).join(", ");
+  const sciTopics    = pickRandom(TOPIC_POOLS.Science, 2).join(", ");
+  const histTopics   = pickRandom(TOPIC_POOLS.History, 2).join(", ");
+  const sportsTopics = pickRandom(TOPIC_POOLS.Sports,  2).join(", ");
+  const techTopics   = pickRandom(TOPIC_POOLS.Tech,    2).join(", ");
+  const caTopics     = pickRandom(TOPIC_POOLS.CA,      2).join(", ");
+
+  const shuffle = (arr) => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+  const fallback = shuffle([
+    ...GK_QUESTIONS.map(q => ({ ...q, explanation: "Standard GK fact." })),
+    ...CURRENT_AFFAIRS.map(q => ({ ...q, explanation: "Current affairs." })),
+    { q: "Who is the 15th President of India?", options: ["Ram Nath Kovind","Draupadi Murmu","Pratibha Patil","Pranab Mukherjee"], correct: 1, cat: "India", explanation: "Draupadi Murmu became President in 2022." },
+    { q: "Which is the largest planet in the solar system?", options: ["Saturn","Neptune","Uranus","Jupiter"], correct: 3, cat: "Science", explanation: "Jupiter is the largest planet." },
+    { q: "Who won FIFA World Cup 2022?", options: ["France","Brazil","Argentina","England"], correct: 2, cat: "Sports", explanation: "Argentina won the 2022 FIFA World Cup." },
+    { q: "What is the full name of ISRO?", options: ["Indian Space Research Organisation","Indian Satellite Research Organisation","International Space Research Organisation","Indian Space Rocket Organisation"], correct: 0, cat: "India", explanation: "ISRO stands for Indian Space Research Organisation." },
+    { q: "Which is the longest National Highway in India?", options: ["NH 44","NH 27","NH 48","NH 52"], correct: 0, cat: "India", explanation: "NH 44 is the longest at 3,745 km." },
+    { q: "Who invented the telephone?", options: ["Thomas Edison","Nikola Tesla","Alexander Graham Bell","Guglielmo Marconi"], correct: 2, cat: "Science", explanation: "Alexander Graham Bell invented the telephone in 1876." },
+    { q: "What is the capital of Japan?", options: ["Osaka","Kyoto","Tokyo","Hiroshima"], correct: 2, cat: "World", explanation: "Tokyo is the capital and largest city of Japan." },
+    { q: "Who wrote 'The Discovery of India'?", options: ["Mahatma Gandhi","Jawaharlal Nehru","Rabindranath Tagore","B.R. Ambedkar"], correct: 1, cat: "India", explanation: "Jawaharlal Nehru wrote it while in prison." },
+  ]).slice(0, 30);
+
   try {
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "anthropic-dangerous-direct-browser-access": "true",
+      },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514", max_tokens: 5000,
-        messages: [{ role: "user", content: `Generate exactly 30 unique multiple-choice GK quiz questions covering India GK, world geography, science, history, sports, tech, current affairs 2024. Return ONLY a JSON array, no markdown. Format: [{"q":"question","options":["A","B","C","D"],"correct":0,"cat":"India","explanation":"one sentence"}]. Rules: correct is 0-indexed (0=A), all 4 options plausible, mix: 8 India, 5 World, 5 Science, 4 History, 3 Sports, 3 Tech, 2 Current Affairs.` }]
-      })
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 6000,
+        messages: [{
+          role: "user",
+          content: `SESSION_ID:${nonce}_${ts}. You are a GK quiz master. Generate a COMPLETELY FRESH set of 30 unique MCQ questions. NEVER repeat common textbook questions like national animal/bird/flower. Use these SPECIFIC subtopics to ensure variety:
+- India (8 questions): ${indiaTopics}
+- World (5 questions): ${worldTopics}
+- Science (5 questions): ${sciTopics}
+- History (4 questions): ${histTopics}
+- Sports (3 questions): ${sportsTopics}
+- Tech (3 questions): ${techTopics}
+- Current Affairs (2 questions): ${caTopics}
+
+Return ONLY a raw JSON array. No markdown, no explanation, no text before or after the array.
+Format: [{"q":"question text","options":["Option A","Option B","Option C","Option D"],"correct":0,"cat":"India","explanation":"one sentence explanation"}]
+Rules: correct is 0-indexed integer. All 4 options must be plausible. All facts must be accurate.`,
+        }],
+      }),
     });
+    if (!r.ok) { console.warn("AI API error:", r.status); return fallback; }
     const data = await r.json();
-    const text = data.content?.[0]?.text || "[]";
-    return JSON.parse(text.replace(/```json|```/g, "").trim());
-  } catch { return []; }
+    const text = data.content?.[0]?.text || "";
+    if (!text) return fallback;
+    const match = text.match(/\[[\s\S]*\]/);
+    if (!match) return fallback;
+    const parsed = JSON.parse(match[0]);
+    if (!Array.isArray(parsed) || parsed.length < 10) return fallback;
+    return parsed.slice(0, 30);
+  } catch (e) {
+    console.warn("AI generation failed, using fallback:", e.message);
+    return fallback;
+  }
 }
 
 // ─── Colors ───
@@ -196,11 +311,11 @@ const ScoreOverlay = ({ score, total, onDone }) => {
 };
 
 // ─── PROCTORING BAR ───
-const ProctoringBar = ({timeLeft,totalTime,current,total})=>{
+const ProctoringBar = ({timeLeft,totalTime,current,total,tabSwitchCount,cameraOn,micOn})=>{
   const m=String(Math.floor(timeLeft/60)).padStart(2,"0"), s=String(timeLeft%60).padStart(2,"0");
   const pct=(timeLeft/totalTime)*100; const urg=timeLeft<300;
   return (
-    <div style={{position:"fixed",top:0,left:0,right:0,zIndex:9999,background:"#0f172a",borderBottom:"1px solid #1e293b",height:50,display:"flex",alignItems:"center",gap:10,padding:"0 14px"}}>
+    <div style={{position:"fixed",top:0,left:0,right:0,zIndex:9999,background:"#0f172a",borderBottom:"1px solid #1e293b",height:54,display:"flex",alignItems:"center",gap:8,padding:"0 12px"}}>
       <div style={{color:"#6366f1",fontWeight:800,fontSize:13,whiteSpace:"nowrap",letterSpacing:0.5}}>◆ GK PULSE</div>
       <div style={{flex:1,height:5,background:"rgba(255,255,255,0.07)",borderRadius:50,overflow:"hidden"}}>
         <motion.div style={{height:"100%",background:urg?"linear-gradient(90deg,#ef4444,#f87171)":"linear-gradient(90deg,#4f46e5,#7c3aed)",borderRadius:50}} animate={{width:`${pct}%`}} transition={{duration:1}}/>
@@ -210,6 +325,19 @@ const ProctoringBar = ({timeLeft,totalTime,current,total})=>{
         {m}:{s}
       </div>
       <div style={{color:"rgba(255,255,255,0.35)",fontSize:11,whiteSpace:"nowrap"}}>{current}/{total}</div>
+      <div style={{display:"flex",alignItems:"center",gap:3,background:cameraOn?"rgba(34,197,94,0.12)":"rgba(239,68,68,0.12)",border:`1px solid ${cameraOn?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"}`,borderRadius:5,padding:"2px 6px"}}>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={cameraOn?"#4ade80":"#f87171"} strokeWidth="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+        <span style={{color:cameraOn?"#4ade80":"#f87171",fontSize:9,fontWeight:700}}>{cameraOn?"ON":"OFF"}</span>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:3,background:micOn?"rgba(34,197,94,0.12)":"rgba(239,68,68,0.12)",border:`1px solid ${micOn?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"}`,borderRadius:5,padding:"2px 6px"}}>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={micOn?"#4ade80":"#f87171"} strokeWidth="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        <span style={{color:micOn?"#4ade80":"#f87171",fontSize:9,fontWeight:700}}>{micOn?"ON":"OFF"}</span>
+      </div>
+      {tabSwitchCount > 0 && (
+        <div style={{background:"rgba(239,68,68,0.18)",border:"1px solid rgba(239,68,68,0.45)",color:"#f87171",padding:"2px 7px",borderRadius:5,fontSize:10,fontWeight:800,whiteSpace:"nowrap"}}>
+          ⚠️ {tabSwitchCount}/3
+        </div>
+      )}
       <div style={{display:"flex",alignItems:"center",gap:3}}>
         <motion.div animate={{opacity:[1,0.3,1]}} transition={{repeat:Infinity,duration:2}} style={{width:6,height:6,borderRadius:"50%",background:"#4ade80"}}/>
         <span style={{color:"#4ade80",fontSize:10,fontWeight:700}}>LIVE</span>
@@ -252,7 +380,7 @@ const NotifModal = ({onAllow,onDeny})=>(
       </motion.div>
       <h3 style={{fontFamily:"'Sora',sans-serif",fontSize:19,fontWeight:800,color:"#0F172A",margin:"0 0 10px"}}>Daily Brain Boost</h3>
       <p style={{color:"#64748B",fontSize:13.5,lineHeight:1.65,margin:"0 0 20px"}}>
-        Get <strong>3 fresh GK questions</strong> every morning at <strong>6:00 AM</strong> — just like Duolingo. Build your knowledge streak! 🧠
+        Get <strong>3 fresh GK questions</strong> every morning at <strong>6:00 AM</strong> 🧠
       </p>
       <div style={{background:"#F8FAFF",border:"1.5px solid #E2E8F0",borderRadius:12,padding:"11px 14px",marginBottom:20,display:"flex",gap:10,textAlign:"left"}}>
         {["📅 Daily at 6 AM","🧠 3 new questions","🔕 Cancel anytime"].map((t,i)=>(
@@ -270,6 +398,49 @@ const NotifModal = ({onAllow,onDeny})=>(
     </motion.div>
   </motion.div>
 );
+
+// ─── WEEK COMPLETED CARD ───
+const WeekCompletedCard = ({ score }) => {
+  const now = new Date();
+  const nextSunday = new Date(now);
+  const day = now.getDay();
+  // Always point to the NEXT Sunday (never today even if today is Sunday)
+  const daysUntilNextSunday = day === 0 ? 7 : 7 - day;
+  nextSunday.setDate(now.getDate() + daysUntilNextSunday);
+  const dateStr = nextSunday.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
+  return (
+    <motion.div initial={{opacity:0,y:12}} animate={{opacity:1,y:0}}
+      style={{background:"linear-gradient(135deg,#0F172A,#1E1B4B)",borderRadius:22,padding:"32px 24px",textAlign:"center",boxShadow:"0 16px 48px rgba(79,70,229,0.3)",position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",top:-50,right:-50,width:180,height:180,borderRadius:"50%",background:"rgba(99,102,241,0.08)"}}/>
+      <div style={{position:"absolute",bottom:-40,left:-40,width:140,height:140,borderRadius:"50%",background:"rgba(139,92,246,0.07)"}}/>
+      <motion.div animate={{scale:[1,1.1,1]}} transition={{repeat:Infinity,duration:2.5}}
+        style={{fontSize:52,marginBottom:12,position:"relative"}}>🏆</motion.div>
+      <div style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:800,color:"#fff",marginBottom:8,position:"relative"}}>
+        This Week Exam Complete!
+      </div>
+      {score && (
+        <div style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:14,padding:"14px 20px",marginBottom:18,position:"relative"}}>
+          <div style={{fontFamily:"'Sora',sans-serif",fontSize:42,fontWeight:800,color:"#fff",lineHeight:1}}>{score.percentage}%</div>
+          <div style={{color:"rgba(255,255,255,0.5)",fontSize:13,marginTop:4}}>{score.score}/{score.total} correct</div>
+          <div style={{height:5,background:"rgba(255,255,255,0.1)",borderRadius:50,overflow:"hidden",marginTop:10}}>
+            <motion.div initial={{width:0}} animate={{width:`${score.percentage}%`}} transition={{duration:1.2,delay:0.4}}
+              style={{height:"100%",background:"linear-gradient(90deg,#4F46E5,#8B5CF6,#EC4899)",borderRadius:50}}/>
+          </div>
+        </div>
+      )}
+      <div style={{color:"rgba(255,255,255,0.55)",fontSize:13,marginBottom:10,position:"relative",lineHeight:1.6}}>
+        You've completed this week's exam.<br/>Only one attempt is allowed per week.
+      </div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"rgba(99,102,241,0.15)",border:"1px solid rgba(99,102,241,0.3)",borderRadius:12,padding:"10px 16px",position:"relative"}}>
+        <span style={{fontSize:18}}>📅</span>
+        <div style={{textAlign:"left"}}>
+          <div style={{color:"rgba(255,255,255,0.45)",fontSize:10,fontWeight:700,letterSpacing:0.4}}>NEXT EXAM OPENS</div>
+          <div style={{color:"#fff",fontWeight:700,fontSize:13}}>{dateStr}</div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
 
 // ─────────────────────────────────────────────
 // MAIN COMPONENT
@@ -297,21 +468,42 @@ export default function GKDailyNotifications() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [overlayData, setOverlayData] = useState({score:0,total:0});
   const [notifSupported, setNotifSupported] = useState(true);
-  const timerRef = useRef(null);
-  const daysLeft = getDaysUntilSunday();
-  const todayIsSunday = isSunday();
+  const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const [cameraOn, setCameraOn] = useState(false);
+  const [micOn, setMicOn] = useState(false);
+  const [countdown, setCountdown] = useState(getCountdownToSunday());
+  const [isMobile, setIsMobile] = useState(false);
+  const [visitedQs, setVisitedQs] = useState(new Set());
+  // ── One-attempt-per-week state ──
+  const [weekTestTaken, setWeekTestTaken] = useState(false);
+  const [weekTestScore, setWeekTestScore] = useState(null);
+
+  const timerRef       = useRef(null);
+  const countdownRef   = useRef(null);
+  const mediaStreamRef = useRef(null);
+
+  const todayIsSunday = isSundayNow();
+  const daysLeft      = getDaysUntilSunday();
 
   useEffect(()=>{
     setNotifSupported("Notification" in window);
     setTodayQs(getDailyQuestions());
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    countdownRef.current = setInterval(()=>{ setCountdown(getCountdownToSunday()); }, 1000);
+
     const init = async()=>{
       const {data:{user}} = await supabase.auth.getUser();
       setSessionUser(user);
-      if (!user){setIsLoading(false);return;}
+      if (!user){ setIsLoading(false); return; }
+
       const {data:p} = await supabase.from("gk_prefs").select("*").eq("user_id",user.id).single();
       if(p) setNotifEnabled(p.notifications_enabled||false);
+
       const {data:sc} = await supabase.from("gk_scores").select("*").eq("user_id",user.id).order("taken_at",{ascending:false}).limit(20);
       if(sc) setScores(sc);
+
       const today = new Date().toISOString().split("T")[0];
       const {data:ds} = await supabase.from("gk_daily_seen").select("answers,score").eq("user_id",user.id).eq("seen_date",today).single();
       if(ds){
@@ -319,12 +511,32 @@ export default function GKDailyNotifications() {
         setTodayScore(ds.score);
         if(ds.answers) try{setTodayAns(JSON.parse(ds.answers));}catch{}
       }
+
+      // ── Check if this week's Sunday exam is already taken ──
+      const wn = getISOWeekNumber();
+      const yr = new Date().getFullYear();
+      const {data:wt} = await supabase
+        .from("gk_scores")
+        .select("score,total,percentage")
+        .eq("user_id", user.id)
+        .eq("type", "weekly")
+        .eq("week_number", wn)
+        .eq("year", yr)
+        .order("taken_at", { ascending: false })
+        .limit(1)
+        .single();
+      if(wt){
+        setWeekTestTaken(true);
+        setWeekTestScore({ score: wt.score, total: wt.total, percentage: wt.percentage });
+      }
+
       setIsLoading(false);
     };
     init();
+    return ()=>{ clearInterval(countdownRef.current); window.removeEventListener("resize", ()=>{}); };
   },[]);
 
-  // Timer
+  // Exam countdown timer
   useEffect(()=>{
     if(isFullscreen && !testSubmitted){
       timerRef.current = setInterval(()=>{
@@ -337,9 +549,42 @@ export default function GKDailyNotifications() {
   // Tab-switch guard
   useEffect(()=>{
     if(!isFullscreen) return;
-    const h=()=>toast.error("⚠️ Do not switch tabs during the exam!",{duration:2500});
+    const h=()=>{
+      setTabSwitchCount(prev=>{
+        const newCount = prev + 1;
+        if(newCount >= 3){
+          toast.error("🚫 3 tab switches detected! Exam auto-submitted.",{duration:3500});
+          setTimeout(()=>handleSubmitTest(true), 1500);
+        } else {
+          toast.error(`⚠️ Warning ${newCount}/3: Do not switch tabs!`,{duration:3000});
+        }
+        return newCount;
+      });
+    };
     window.addEventListener("blur",h);
     return ()=>window.removeEventListener("blur",h);
+  },[isFullscreen]);
+
+  // Fullscreen exit = tab switch violation
+  useEffect(()=>{
+    if(!isFullscreen) return;
+    const onFsChange = ()=>{
+      if(!document.fullscreenElement && isFullscreen){
+        setTabSwitchCount(prev=>{
+          const newCount = prev + 1;
+          if(newCount >= 3){
+            toast.error("🚫 Fullscreen exited 3 times! Exam auto-submitted.",{duration:3500});
+            setTimeout(()=>handleSubmitTest(true), 1500);
+          } else {
+            toast.error(`⚠️ Warning ${newCount}/3: Fullscreen exit detected! Re-entering...`,{duration:3000});
+            setTimeout(()=>{ try{document.documentElement.requestFullscreen();}catch{} },800);
+          }
+          return newCount;
+        });
+      }
+    };
+    document.addEventListener("fullscreenchange", onFsChange);
+    return ()=>document.removeEventListener("fullscreenchange", onFsChange);
   },[isFullscreen]);
 
   // ─── Notifications ───
@@ -367,7 +612,6 @@ export default function GKDailyNotifications() {
         if("periodicSync" in reg) await reg.periodicSync.register("daily-gk-6am",{minInterval:24*60*60*1000});
       }catch(e){console.log("SW:",e);}
     }
-    // Immediate welcome notification
     if(Notification.permission==="granted"){
       new Notification("🔔 Knowledge Pulse",{
         body:"3 GK questions every morning at 6 AM. Starting tomorrow!",
@@ -402,33 +646,83 @@ export default function GKDailyNotifications() {
     }
   };
 
-  // ─── Test ───
+  // ─── Start Exam ───
   const startTest = async()=>{
-    if(!todayIsSunday){toast.error(`⏳ Test opens Sundays. ${daysLeft}d to go!`);return;}
-    setActiveTab("test"); setTestSubmitted(false); setTestAns({}); setTestScore(null); setCurQ(0); setTimeLeft(45*60); setLoadingAI(true);
-    const aiQs = await generateAIMCQQuestions();
-    setTestQs(aiQs.slice(0,30)); setLoadingAI(false);
+    // Guard 1: Only on Sunday
+    if(!todayIsSunday){
+      toast.error(`⏳ Exam opens only on Sundays. ${daysLeft}d to go!`);
+      return;
+    }
+    // Guard 2: Already taken this week
+    if(weekTestTaken){
+      toast.error("✅ You've already completed this week's exam. See you next Sunday!");
+      return;
+    }
+    // Guard 3: Mobile not supported
+    if(window.innerWidth < 768){
+      toast.error("🖥️ Please open on a laptop/desktop. Mobile not supported.",{duration:4000});
+      return;
+    }
+
+    setActiveTab("test"); setTestSubmitted(false); setTestAns({}); setTestScore(null);
+    setCurQ(0); setTimeLeft(45*60); setTabSwitchCount(0); setLoadingAI(true);
+    setVisitedQs(new Set([0]));
+
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+      mediaStreamRef.current = stream;
+      setCameraOn(true); setMicOn(true);
+      toast.success("📷 Camera & 🎤 Mic activated — Proctoring LIVE",{duration:2500});
+    }catch(e){
+      toast.error("⚠️ Camera/Mic denied. Exam proceeds without proctoring media.",{duration:3500});
+      setCameraOn(false); setMicOn(false);
+    }
+
+    toast("🤖 Generating fresh questions...",{icon:"⚡",duration:2000});
+    const finalQs = await generateAIMCQQuestions();
+    setTestQs(finalQs.slice(0,30)); setLoadingAI(false);
+
     try{await document.documentElement.requestFullscreen();}catch{}
     setIsFullscreen(true);
   };
 
   const handleSubmitTest = useCallback(async(auto=false)=>{
     clearInterval(timerRef.current);
+    if(mediaStreamRef.current){
+      mediaStreamRef.current.getTracks().forEach(t=>t.stop());
+      mediaStreamRef.current = null;
+    }
+    setCameraOn(false); setMicOn(false);
     let correct=0;
     testQs.forEach((q,i)=>{ if(testAns[i]===q.correct) correct++; });
     const pct=testQs.length>0?Math.round((correct/testQs.length)*100):0;
-    setTestScore({correct,total:testQs.length,pct}); setTestSubmitted(true); setIsFullscreen(false);
+    const scoreObj = { score: correct, total: testQs.length, percentage: pct };
+    setTestScore(scoreObj); setTestSubmitted(true); setIsFullscreen(false);
     try{await document.exitFullscreen();}catch{}
     setOverlayData({score:correct,total:testQs.length});
     setShowOverlay(true);
     setShowConfetti(pct>=60);
     setTimeout(()=>setShowConfetti(false),3500);
+
     if(sessionUser){
-      await supabase.from("gk_scores").insert({user_id:sessionUser.id,score:correct,total:testQs.length,percentage:pct,type:"weekly",taken_at:new Date().toISOString()});
+      const wn=getISOWeekNumber(); const yr=new Date().getFullYear();
+      const timeTaken=45*60-timeLeft;
+      await supabase.from("gk_scores").insert({
+        user_id:sessionUser.id, score:correct, total:testQs.length,
+        percentage:pct, type:"weekly",
+        week_number:wn, year:yr,
+        tab_switches:tabSwitchCount,
+        time_taken:timeTaken,
+        taken_at:new Date().toISOString()
+      });
+      // Mark week as done
+      setWeekTestTaken(true);
+      setWeekTestScore(scoreObj);
+
       const {data:sc}=await supabase.from("gk_scores").select("*").eq("user_id",sessionUser.id).order("taken_at",{ascending:false}).limit(20);
       if(sc) setScores(sc);
     }
-  },[testQs,testAns,sessionUser]);
+  },[testQs,testAns,sessionUser,tabSwitchCount,timeLeft]);
 
   // ─── LOADING ───
   if(isLoading) return(
@@ -438,26 +732,55 @@ export default function GKDailyNotifications() {
     </div>
   );
 
-  // ─── FULLSCREEN TEST ───
+  // ─── FULLSCREEN EXAM ───
   if(isFullscreen){
     const q=testQs[curQ]; if(!q) return null;
     const cs=clr(q.cat); const answered=Object.keys(testAns).length;
     return(
-      <div style={{minHeight:"100vh",background:"#F8FAFF",paddingTop:50,fontFamily:"'DM Sans',sans-serif"}}>
-        <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Sora:wght@700;800&display=swap');`}</style>
-        <ProctoringBar timeLeft={timeLeft} totalTime={45*60} current={curQ+1} total={testQs.length}/>
-        <div style={{maxWidth:680,margin:"0 auto",padding:"18px 16px"}}>
+      <div style={{minHeight:"100vh",background:"#F0F2F5",paddingTop:54,fontFamily:"'DM Sans',sans-serif"}}>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Sora:wght@700;800&display=swap');
+          nav, aside, [class*="sidebar"], [class*="Sidebar"], [class*="side-nav"], [class*="SideNav"],
+          [class*="drawer"], [class*="Drawer"], [class*="nav-rail"], [class*="NavRail"] { display: none !important; }
+          [class*="layout"], [class*="Layout"], [class*="main-content"], [class*="MainContent"] {
+            padding-left: 0 !important; margin-left: 0 !important; max-width: 100% !important;
+          }
+          body { overflow: hidden; }
+        `}</style>
+
+        <ProctoringBar timeLeft={timeLeft} totalTime={45*60} current={curQ+1} total={testQs.length}
+          tabSwitchCount={tabSwitchCount} cameraOn={cameraOn} micOn={micOn}/>
+
+        <div style={{maxWidth:740,margin:"0 auto",padding:"16px 20px"}}>
           {/* Navigator */}
-          <div style={{background:"#fff",border:"1.5px solid #E8ECF4",borderRadius:14,padding:"11px 14px",marginBottom:14,display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
-            {testQs.map((_,i)=>(
-              <button key={i} onClick={()=>setCurQ(i)}
-                style={{width:26,height:26,borderRadius:7,border:"none",cursor:"pointer",background:i===curQ?"#4F46E5":testAns[i]!==undefined?"#22C55E":"#E8ECF4",color:(i===curQ||testAns[i]!==undefined)?"#fff":"#94A3B8",fontWeight:700,fontSize:10,transition:"all 0.15s",transform:i===curQ?"scale(1.15)":"scale(1)",boxShadow:i===curQ?"0 2px 8px rgba(79,70,229,0.4)":"none"}}>
-                {i+1}
-              </button>
-            ))}
-            <div style={{marginLeft:"auto",color:"#94A3B8",fontSize:12,fontWeight:600}}>{answered}/{testQs.length}</div>
+          <div style={{background:"#fff",border:"1.5px solid #E8ECF4",borderRadius:14,padding:"10px 13px",marginBottom:12,display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
+            {testQs.map((_,i)=>{
+              const isActive   = i === curQ;
+              const isAnswered = testAns[i] !== undefined;
+              const isVisited  = visitedQs.has(i);
+              const bg  = isActive?"#4F46E5":isAnswered?"#22C55E":isVisited?"#F59E0B":"#E8ECF4";
+              const col = (isActive||isAnswered||isVisited)?"#fff":"#94A3B8";
+              return(
+                <button key={i} onClick={()=>{ setCurQ(i); setVisitedQs(v=>{const n=new Set(v);n.add(i);return n;}); }}
+                  style={{width:28,height:28,borderRadius:7,border:"none",cursor:"pointer",background:bg,color:col,fontWeight:700,fontSize:10,transition:"all 0.12s",transform:isActive?"scale(1.15)":"scale(1)",boxShadow:isActive?"0 2px 8px rgba(79,70,229,0.4)":isAnswered?"0 1px 4px rgba(34,197,94,0.3)":"none"}}>
+                  {i+1}
+                </button>
+              );
+            })}
+            <span style={{marginLeft:"auto",color:"#94A3B8",fontSize:12,fontWeight:600,whiteSpace:"nowrap"}}>{answered}/{testQs.length} answered</span>
           </div>
-          {/* Q Card */}
+
+          {/* Legend */}
+          <div style={{display:"flex",gap:14,marginBottom:12,flexWrap:"wrap"}}>
+            {[{color:"#4F46E5",label:"Current"},{color:"#22C55E",label:"Answered"},{color:"#F59E0B",label:"Visited"},{color:"#E8ECF4",label:"Not Visited",border:"1.5px solid #CBD5E1"}].map((l,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:5}}>
+                <div style={{width:12,height:12,borderRadius:3,background:l.color,border:l.border||"none",flexShrink:0}}/>
+                <span style={{fontSize:11,color:"#64748B",fontWeight:500}}>{l.label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Question card */}
           <AnimatePresence mode="wait">
             <motion.div key={curQ} initial={{opacity:0,x:28}} animate={{opacity:1,x:0}} exit={{opacity:0,x:-28}} transition={{duration:0.2}}
               style={{background:"#fff",border:"1.5px solid #E8ECF4",borderRadius:20,padding:"22px 20px",marginBottom:14,boxShadow:"0 4px 20px rgba(0,0,0,0.07)"}}>
@@ -475,28 +798,35 @@ export default function GKDailyNotifications() {
               </div>
             </motion.div>
           </AnimatePresence>
-          {/* Nav buttons */}
-          <div style={{display:"flex",gap:10}}>
-            <button onClick={()=>setCurQ(q=>Math.max(0,q-1))} disabled={curQ===0}
-              style={{padding:"13px 18px",borderRadius:12,border:"1.5px solid #E2E8F0",background:"#fff",color:"#64748B",fontWeight:700,cursor:curQ===0?"not-allowed":"pointer",opacity:curQ===0?0.4:1,fontFamily:"'DM Sans',sans-serif"}}>
+
+          {/* Prev / Next / Submit */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
+            <button
+              onClick={()=>{ setCurQ(q=>{ const nq=Math.max(0,q-1); setVisitedQs(v=>{const n=new Set(v);n.add(nq);return n;}); return nq; }); }}
+              disabled={curQ===0}
+              style={{padding:"12px 26px",borderRadius:12,border:"1.5px solid #E2E8F0",background:"#fff",color:"#64748B",fontWeight:700,fontSize:14,cursor:curQ===0?"not-allowed":"pointer",opacity:curQ===0?0.35:1,fontFamily:"'DM Sans',sans-serif",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
               ← Prev
             </button>
             {curQ<testQs.length-1?(
-              <button onClick={()=>setCurQ(q=>q+1)}
-                style={{flex:1,padding:"13px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#4F46E5,#7C3AED)",color:"#fff",fontWeight:800,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",boxShadow:"0 4px 14px rgba(79,70,229,0.35)"}}>
+              <button
+                onClick={()=>{ setCurQ(q=>{ setVisitedQs(v=>{const n=new Set(v);n.add(q+1);return n;}); return q+1; }); }}
+                style={{padding:"12px 30px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#4F46E5,#7C3AED)",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",boxShadow:"0 3px 12px rgba(79,70,229,0.3)"}}>
                 Next →
               </button>
             ):(
-              <motion.button whileHover={{scale:1.02}} whileTap={{scale:0.97}} onClick={()=>handleSubmitTest(false)}
-                style={{flex:1,padding:"13px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#059669,#10B981)",color:"#fff",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",boxShadow:"0 4px 16px rgba(5,150,105,0.4)"}}>
+              <motion.button whileHover={{scale:1.01}} whileTap={{scale:0.97}} onClick={()=>handleSubmitTest(false)}
+                style={{padding:"12px 28px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#059669,#10B981)",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",boxShadow:"0 3px 12px rgba(5,150,105,0.3)"}}>
                 Submit Test 🚀
               </motion.button>
             )}
           </div>
-          {answered<testQs.length&&(
-            <div style={{marginTop:10,background:"#FFFBEB",border:"1px solid #FCD34D",borderRadius:10,padding:"8px 13px",color:"#92400E",fontSize:12,fontWeight:600}}>
-              ⚠️ {testQs.length-answered} question{testQs.length-answered!==1?"s":""} unanswered
-            </div>
+
+          {tabSwitchCount > 0 && (
+            <motion.div initial={{opacity:0,y:5}} animate={{opacity:1,y:0}}
+              style={{marginTop:10,background:"#FEF2F2",border:"1.5px solid #FECACA",borderRadius:10,padding:"10px 13px",color:"#991B1B",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:16}}>🚨</span>
+              <span>Tab switch: <strong>{tabSwitchCount}/3</strong> — {3-tabSwitchCount} more will auto-submit.</span>
+            </motion.div>
           )}
         </div>
       </div>
@@ -522,7 +852,7 @@ export default function GKDailyNotifications() {
       </AnimatePresence>
       <Confetti active={showConfetti}/>
 
-      {/* ── HEADER ── */}
+      {/* HEADER */}
       <div style={{background:"#fff",borderBottom:"1px solid #EEF2F7",position:"sticky",top:0,zIndex:100,boxShadow:"0 1px 10px rgba(0,0,0,0.05)"}}>
         <div style={{maxWidth:600,margin:"0 auto",padding:"0 16px"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 0 10px"}}>
@@ -557,8 +887,8 @@ export default function GKDailyNotifications() {
           style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}}>
           {[
             {val:new Date().toLocaleDateString("en-IN",{weekday:"short"}),icon:"📅",label:"Today",color:"#4F46E5"},
-            {val:todayIsSunday?"Now!":daysLeft+"d",icon:todayIsSunday?"📝":"⏳",label:"Until Sunday",color:todayIsSunday?"#059669":"#D97706"},
-            {val:String(scores.length),icon:"🏆",label:"Tests",color:"#0EA5E9"},
+            {val:todayIsSunday?"Open!":daysLeft+"d",icon:todayIsSunday?"📝":"⏳",label:"Sunday Exam",color:todayIsSunday?"#059669":"#D97706"},
+            {val:String(scores.filter(s=>s.type==="weekly").length),icon:"🏆",label:"Exams Done",color:"#0EA5E9"},
           ].map((s,i)=>(
             <motion.div key={i} whileHover={{y:-2}}
               style={{background:"#fff",border:"1.5px solid #EEF2F7",borderRadius:14,padding:"13px 10px",textAlign:"center",boxShadow:"0 1px 8px rgba(0,0,0,0.04)"}}>
@@ -571,34 +901,37 @@ export default function GKDailyNotifications() {
 
         {/* NOTIFICATION TOGGLE */}
         <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.1}}
-          style={{background:"#fff",border:"1.5px solid #EEF2F7",borderRadius:14,padding:"13px 15px",marginBottom:18,boxShadow:"0 1px 8px rgba(0,0,0,0.04)"}}>
-          <div style={{display:"flex",alignItems:"center",gap:12}}>
-            <div style={{width:38,height:38,borderRadius:10,background:notifEnabled?"linear-gradient(135deg,#4F46E5,#7C3AED)":"#F1F5F9",display:"flex",alignItems:"center",justifyContent:"center",color:notifEnabled?"#fff":"#94A3B8",transition:"all 0.3s",flexShrink:0}}>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill={notifEnabled?"currentColor":"none"} stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          style={{background:"#fff",border:`1.5px solid ${notifEnabled?"#C7D2FE":"#EEF2F7"}`,borderRadius:14,padding:"12px 14px",marginBottom:18,boxShadow:"0 1px 6px rgba(0,0,0,0.05)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{width:38,height:38,borderRadius:10,background:notifEnabled?"#EEF2FF":"#F8FAFF",border:`1.5px solid ${notifEnabled?"#C7D2FE":"#E2E8F0"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={notifEnabled?"#4F46E5":"#94A3B8"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
             </div>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{fontWeight:700,fontSize:14,color:"#0F172A"}}>Daily 6 AM Notifications</div>
-              <div style={{fontSize:12,color:notifEnabled?"#059669":"#94A3B8",marginTop:1,fontWeight:600}}>
-                {notifEnabled?"🟢 Active — like Duolingo reminders!":"Off — tap to enable daily GK alerts"}
+              <div style={{fontWeight:700,fontSize:14,color:"#0F172A"}}>Daily 6 AM Reminders</div>
+              <div style={{fontSize:12,color:notifEnabled?"#059669":"#94A3B8",fontWeight:500,marginTop:1}}>
+                {notifEnabled?"🟢 Active — 3 questions every morning":"Tap to enable daily GK alerts"}
               </div>
             </div>
-            <button onClick={handleToggleNotif}
-              style={{width:50,height:27,background:notifEnabled?"linear-gradient(135deg,#4F46E5,#7C3AED)":"#E2E8F0",borderRadius:50,position:"relative",border:"none",cursor:"pointer",transition:"all 0.3s",flexShrink:0}}>
-              <div style={{position:"absolute",top:3.5,left:notifEnabled?25:3.5,width:20,height:20,borderRadius:"50%",background:"#fff",transition:"left 0.3s",boxShadow:"0 1px 5px rgba(0,0,0,0.2)"}}/>
+            <button onClick={handleToggleNotif} aria-label="Toggle notifications"
+              style={{width:48,height:26,borderRadius:50,border:"none",cursor:"pointer",padding:0,flexShrink:0,
+                background:notifEnabled?"#4F46E5":"#D1D5DB",position:"relative",transition:"background 0.2s"}}>
+              <div style={{position:"absolute",top:3,left:notifEnabled?25:3,width:20,height:20,borderRadius:"50%",
+                background:"#fff",boxShadow:"0 1px 4px rgba(0,0,0,0.25)",transition:"left 0.2s"}}/>
             </button>
           </div>
         </motion.div>
 
-        {/* TABS */}
         <AnimatePresence mode="wait">
 
-          {/* TODAY */}
+          {/* TODAY TAB */}
           {activeTab==="today"&&(
             <motion.div key="today" initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-8}}>
               <div style={{textAlign:"center",color:"#94A3B8",fontSize:11,fontWeight:700,marginBottom:14,letterSpacing:0.5}}>
                 {new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long",year:"numeric"}).toUpperCase()}
               </div>
-
               {todayQs.map((item,qi)=>{
                 const cs=clr(item.cat); const sel=todayAns[qi]; const sub=todaySubmitted;
                 return(
@@ -634,7 +967,6 @@ export default function GKDailyNotifications() {
                   </motion.div>
                 );
               })}
-
               {!todaySubmitted?(
                 <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.25}}>
                   <div style={{display:"flex",justifyContent:"center",gap:7,marginBottom:12}}>
@@ -657,32 +989,32 @@ export default function GKDailyNotifications() {
                     {todayScore.pct===100?"Perfect Score! 🌟":todayScore.pct>=67?"Great job! 💪":"Keep practicing! 📖"}
                   </div>
                   <div style={{color:"#94A3B8",fontSize:12,marginTop:5}}>
-                    Come back tomorrow · {todayIsSunday?"Take Sunday Test →":daysLeft+"d until Sunday test"}
+                    Come back tomorrow · {todayIsSunday?"Exam is open today →":daysLeft+"d until Sunday exam"}
                   </div>
                 </motion.div>
               )}
             </motion.div>
           )}
 
-          {/* TEST */}
+          {/* TEST TAB */}
           {activeTab==="test"&&(
             <motion.div key="test" initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-8}}>
               {loadingAI?(
                 <div style={{textAlign:"center",padding:"56px 0"}}>
                   <motion.div animate={{rotate:360}} transition={{repeat:Infinity,duration:0.8,ease:"linear"}}
                     style={{width:42,height:42,borderRadius:"50%",border:"3px solid #EEF2FF",borderTopColor:"#4F46E5",margin:"0 auto 14px"}}/>
-                  <div style={{color:"#64748B",fontWeight:600}}>AI is generating 30 questions...</div>
+                  <div style={{color:"#64748B",fontWeight:600}}>AI is generating 30 fresh questions...</div>
                 </div>
+
+              // ── Already taken this week (before starting a new attempt) ──
+              ):weekTestTaken&&!testSubmitted?(
+                <WeekCompletedCard score={weekTestScore}/>
+
+              // ── Just finished the exam ──
               ):testSubmitted&&testScore?(
                 <>
-                  <div style={{background:"linear-gradient(135deg,#0F172A,#1E1B4B)",borderRadius:22,padding:"28px 22px",textAlign:"center",marginBottom:14,boxShadow:"0 12px 40px rgba(79,70,229,0.25)"}}>
-                    <div style={{fontSize:44,marginBottom:8}}>{testScore.pct>=80?"🏆":testScore.pct>=60?"🎯":"📚"}</div>
-                    <div style={{fontFamily:"'Sora',sans-serif",fontSize:48,fontWeight:800,color:"#fff",lineHeight:1}}>{testScore.pct}%</div>
-                    <div style={{color:"rgba(255,255,255,0.45)",fontSize:13,margin:"6px 0 18px"}}>{testScore.correct}/{testScore.total} correct</div>
-                    <div style={{height:6,background:"rgba(255,255,255,0.1)",borderRadius:50,overflow:"hidden"}}>
-                      <motion.div initial={{width:0}} animate={{width:`${testScore.pct}%`}} transition={{duration:1.4,delay:0.3}}
-                        style={{height:"100%",background:"linear-gradient(90deg,#4F46E5,#8B5CF6,#EC4899)",borderRadius:50}}/>
-                    </div>
+                  <div style={{marginBottom:16}}>
+                    <WeekCompletedCard score={testScore}/>
                   </div>
                   <div style={{color:"#94A3B8",fontSize:11,fontWeight:700,letterSpacing:0.5,marginBottom:10}}>QUESTION REVIEW</div>
                   {testQs.map((q,i)=>{
@@ -705,25 +1037,45 @@ export default function GKDailyNotifications() {
                     );
                   })}
                 </>
+
+              // ── It IS Sunday and not taken yet ──
               ):todayIsSunday?(
                 <div>
+                  {isMobile&&(
+                    <motion.div initial={{opacity:0,y:-8}} animate={{opacity:1,y:0}}
+                      style={{background:"#FEF3C7",border:"1.5px solid #FCD34D",borderRadius:14,padding:"14px 16px",marginBottom:14,display:"flex",gap:12,alignItems:"flex-start"}}>
+                      <span style={{fontSize:24,flexShrink:0}}>🖥️</span>
+                      <div>
+                        <div style={{fontWeight:800,fontSize:14,color:"#92400E",marginBottom:3}}>Laptop/Desktop Required</div>
+                        <div style={{fontSize:12,color:"#78350F",lineHeight:1.5}}>
+                          This exam requires a full-screen proctored environment. Please open on a <strong>laptop or desktop</strong>.
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
                   <div style={{background:"linear-gradient(135deg,#4F46E5,#7C3AED)",borderRadius:22,padding:"28px 22px",textAlign:"center",color:"#fff",marginBottom:14,boxShadow:"0 10px 36px rgba(79,70,229,0.35)",position:"relative",overflow:"hidden"}}>
                     <div style={{position:"absolute",top:-45,right:-45,width:160,height:160,borderRadius:"50%",background:"rgba(255,255,255,0.05)"}}/>
                     <div style={{position:"absolute",bottom:-35,left:-35,width:120,height:120,borderRadius:"50%",background:"rgba(255,255,255,0.04)"}}/>
                     <motion.div animate={{scale:[1,1.08,1]}} transition={{repeat:Infinity,duration:2.2}} style={{fontSize:48,marginBottom:10,position:"relative"}}>📝</motion.div>
-                    <h2 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:800,margin:"0 0 7px"}}>Sunday Weekly Test</h2>
-                    <p style={{opacity:0.75,fontSize:13,margin:"0 0 18px"}}>30 AI questions · 45 min · MNC-style proctored</p>
+                    <h2 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:800,margin:"0 0 7px"}}>Sunday Weekly Exam</h2>
+                    <p style={{opacity:0.75,fontSize:13,margin:"0 0 4px"}}>30 AI questions · 45 min · Proctored</p>
+                    <p style={{opacity:0.55,fontSize:12,margin:"0 0 18px"}}>Window: 12:00 AM – 11:59 PM today only · 1 attempt</p>
                     <div style={{display:"flex",gap:7,justifyContent:"center",flexWrap:"wrap",marginBottom:20}}>
-                      {["30 MCQs","45 Min","Proctored","Auto-Score"].map(t=>(
+                      {["30 MCQs","45 Min","Proctored","1 Attempt/Week"].map(t=>(
                         <span key={t} style={{background:"rgba(255,255,255,0.14)",border:"1px solid rgba(255,255,255,0.22)",borderRadius:50,padding:"4px 11px",fontSize:11,fontWeight:700}}>{t}</span>
                       ))}
                     </div>
                     <motion.button whileHover={{scale:1.04}} whileTap={{scale:0.97}} onClick={startTest}
-                      style={{background:"#fff",color:"#4F46E5",border:"none",padding:"13px 36px",borderRadius:50,fontWeight:800,fontSize:15,cursor:"pointer",boxShadow:"0 6px 18px rgba(0,0,0,0.18)",fontFamily:"'DM Sans',sans-serif",position:"relative"}}>
+                      style={{background:"#fff",color:"#4F46E5",border:"none",padding:"13px 36px",borderRadius:50,fontWeight:800,fontSize:15,cursor:"pointer",boxShadow:"0 6px 18px rgba(0,0,0,0.18)",fontFamily:"'DM Sans',sans-serif"}}>
                       Start Exam 🚀
                     </motion.button>
                   </div>
-                  {[["🎯","30 MCQ Questions","AI-generated across all GK categories"],["🎥","Proctored Mode","Fullscreen + cam/mic indicators"],["⏱️","45 Minutes","Auto-submits on timeout"],["📊","Instant Results","Detailed review with explanations"]].map(([icon,title,desc],i)=>(
+                  {[
+                    ["🎯","30 Fresh MCQ Questions","AI-generated unique topics every session"],
+                    ["🎥","Camera & Mic Proctoring","Real-time audio/video monitoring"],
+                    ["⏱️","45 Minutes","Auto-submits on timeout"],
+                    ["🔒","One Attempt Per Week","Sunday 12:00 AM – 11:59 PM only"],
+                  ].map(([icon,title,desc],i)=>(
                     <motion.div key={i} initial={{opacity:0,x:-8}} animate={{opacity:1,x:0}} transition={{delay:i*0.07}}
                       style={{background:"#fff",border:"1.5px solid #EEF2F7",borderRadius:13,padding:"13px 15px",marginBottom:9,display:"flex",gap:12,alignItems:"center",boxShadow:"0 1px 6px rgba(0,0,0,0.04)"}}>
                       <span style={{fontSize:22,width:34,textAlign:"center",flexShrink:0}}>{icon}</span>
@@ -731,19 +1083,43 @@ export default function GKDailyNotifications() {
                     </motion.div>
                   ))}
                 </div>
+
+              // ── Not Sunday yet — countdown ──
               ):(
                 <motion.div initial={{opacity:0,y:8}} animate={{opacity:1,y:0}}
                   style={{background:"#fff",border:"1.5px solid #EEF2F7",borderRadius:22,padding:"32px 22px",textAlign:"center",boxShadow:"0 4px 18px rgba(0,0,0,0.06)"}}>
                   <div style={{fontSize:52,marginBottom:10}}>⏳</div>
-                  <div style={{fontFamily:"'Sora',sans-serif",fontSize:68,fontWeight:800,color:"#0F172A",lineHeight:1}}>{daysLeft}</div>
-                  <div style={{fontSize:17,fontWeight:700,color:"#4F46E5",marginTop:7}}>day{daysLeft!==1?"s":""} until Sunday Test</div>
-                  <div style={{color:"#94A3B8",fontSize:13,margin:"6px 0 22px"}}>Weekly exam · 30 AI MCQs · 45 minutes</div>
+                  <div style={{display:"flex",gap:8,justifyContent:"center",marginBottom:8}}>
+                    {[
+                      {val:String(countdown.d).padStart(2,"0"),label:"Days"},
+                      {val:String(countdown.h).padStart(2,"0"),label:"Hours"},
+                      {val:String(countdown.m).padStart(2,"0"),label:"Min"},
+                      {val:String(countdown.s).padStart(2,"0"),label:"Sec"},
+                    ].map((u,i)=>(
+                      <React.Fragment key={u.label}>
+                        <div style={{textAlign:"center"}}>
+                          <div style={{fontFamily:"'Sora',sans-serif",fontSize:32,fontWeight:800,color:"#0F172A",lineHeight:1,fontVariantNumeric:"tabular-nums",minWidth:42,background:"#F1F5F9",borderRadius:10,padding:"6px 8px"}}>{u.val}</div>
+                          <div style={{fontSize:10,color:"#94A3B8",fontWeight:700,marginTop:4}}>{u.label}</div>
+                        </div>
+                        {i<3&&<div style={{fontFamily:"'Sora',sans-serif",fontSize:28,fontWeight:800,color:"#CBD5E1",alignSelf:"flex-start",marginTop:8}}>:</div>}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                  <div style={{fontSize:17,fontWeight:700,color:"#4F46E5",marginTop:4}}>until Sunday Exam</div>
+                  <div style={{color:"#94A3B8",fontSize:13,margin:"6px 0 22px"}}>Weekly exam · 30 AI MCQs · 45 minutes · 1 attempt only</div>
                   <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:18}}>
-                    {["M","T","W","T","F","S","S"].map((d,i)=>{
-                      const isSun=i===daysLeft, isToday=i===0;
+                    {[{label:"M",dayIdx:1},{label:"T",dayIdx:2},{label:"W",dayIdx:3},{label:"T",dayIdx:4},{label:"F",dayIdx:5},{label:"S",dayIdx:6},{label:"S",dayIdx:0}].map((d,i)=>{
+                      const todayJsDay = new Date().getDay();
+                      const isTodayDay = todayJsDay === d.dayIdx;
+                      const isSunDay   = d.dayIdx === 0;
+                      const bg = (isTodayDay&&isSunDay)||isSunDay?"#059669":isTodayDay?"#4F46E5":"#F8FAFF";
+                      const bc = (isTodayDay&&isSunDay)||isSunDay?"#059669":isTodayDay?"#4F46E5":"#E2E8F0";
+                      const col = (isSunDay||isTodayDay)?"#fff":"#94A3B8";
+                      const sh  = isSunDay?"0 3px 10px rgba(5,150,105,0.4)":isTodayDay?"0 3px 10px rgba(79,70,229,0.35)":"none";
                       return(
-                        <div key={i} style={{width:34,height:34,borderRadius:9,background:isSun?"#4F46E5":isToday?"#EEF2FF":"#F8FAFF",border:`1.5px solid ${isSun?"#4F46E5":isToday?"#C7D2FE":"#E2E8F0"}`,display:"flex",alignItems:"center",justifyContent:"center",color:isSun?"#fff":isToday?"#4338CA":"#94A3B8",fontWeight:isSun||isToday?800:600,fontSize:12,boxShadow:isSun?"0 3px 10px rgba(79,70,229,0.35)":"none"}}>
-                          {d}
+                        <div key={i} style={{width:34,height:34,borderRadius:9,background:bg,border:`1.5px solid ${bc}`,display:"flex",alignItems:"center",justifyContent:"center",color:col,fontWeight:(isSunDay||isTodayDay)?800:600,fontSize:12,boxShadow:sh,position:"relative"}}>
+                          {d.label}
+                          {isSunDay&&!isTodayDay&&<span style={{position:"absolute",bottom:-6,left:"50%",transform:"translateX(-50%)",fontSize:8,color:"#059669"}}>●</span>}
                         </div>
                       );
                     })}
@@ -756,7 +1132,7 @@ export default function GKDailyNotifications() {
             </motion.div>
           )}
 
-          {/* SCORES */}
+          {/* SCORES TAB */}
           {activeTab==="scores"&&(
             <motion.div key="scores" initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-8}}>
               {scores.length===0?(
@@ -782,7 +1158,7 @@ export default function GKDailyNotifications() {
                         <div>
                           <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
                             <div style={{fontWeight:800,fontSize:14,color:"#0F172A"}}>{s.score}/{s.total}</div>
-                            {s.type&&<span style={{background:s.type==="daily"?"#EEF2FF":"#F0FDF4",color:s.type==="daily"?"#4338CA":"#166534",border:`1px solid ${s.type==="daily"?"#C7D2FE":"#BBF7D0"}`,borderRadius:50,padding:"1px 7px",fontSize:9,fontWeight:800}}>{s.type==="daily"?"DAILY":"WEEKLY"}</span>}
+                            {s.type&&<span style={{background:s.type==="daily"?"#EEF2FF":"#F0FDF4",color:s.type==="daily"?"#4338CA":"#166634",border:`1px solid ${s.type==="daily"?"#C7D2FE":"#BBF7D0"}`,borderRadius:50,padding:"1px 7px",fontSize:9,fontWeight:800}}>{s.type==="daily"?"DAILY":"WEEKLY"}</span>}
                           </div>
                           <div style={{color:"#94A3B8",fontSize:11}}>{new Date(s.taken_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}</div>
                         </div>
