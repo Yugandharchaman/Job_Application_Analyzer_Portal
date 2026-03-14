@@ -17,7 +17,8 @@ import AuthPage from "./pages/AuthPage";
 import InterviewExperience from "./pages/InterviewExperience";
 import ResetPassword from "./pages/ResetPassword";
 import AIResumerAnalyzer from "./pages/AIResumerAnalyzer";
-import DailyNews  from "./pages/DailyNews";  
+import DailyNews  from "./pages/DailyNews"; 
+import MockInterview from "./pages/MockInterview";   
 
 // --- PROTECTED ROUTE COMPONENT ---
 // Blocks access to Dashboard/Jobs if NOT logged in
@@ -127,6 +128,7 @@ function App() {
           <Route path="/connect" element={<ProtectedRoute session={session}><NetworkNode /></ProtectedRoute>} />
           <Route path="/ai-resume-analyzer" element={<ProtectedRoute session={session}><AIResumerAnalyzer /></ProtectedRoute>} /> 
           <Route path="/tech-Feed" element={<ProtectedRoute session={session}><DailyNews /></ProtectedRoute>} /> 
+          <Route path="/mock-interview" element={<ProtectedRoute session={session}><MockInterview /></ProtectedRoute>} />
 
           {/* Catch-all: Redirects any typos or unknown URLs to Dashboard */}
           <Route path="*" element={<Navigate to="/" replace />} />

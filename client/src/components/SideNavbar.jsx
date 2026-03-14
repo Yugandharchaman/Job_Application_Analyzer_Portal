@@ -6,7 +6,7 @@ import toast from "react-hot-toast";
 import {
   Home, Clock, Calendar, Bell, XCircle, FileText,
   LogOut, Target, Book, User, MessageCircle,
-  Edit3, Save, Camera, Upload, Download, File, Info, X, Rss, Search
+  Edit3, Save, Camera, Upload, Download, File, Info, X, Rss, Search, Video
 } from "react-feather";
 
 // ─────────────────────────────────────────────────────────────────
@@ -851,26 +851,28 @@ const SideNavbar = () => {
     } finally { setIsSaving(false); }
   };
 
+  // ── ONLY CHANGE: Added Video icon to AI Mock Interview nav item ──
   const menu = [
-    { name: "Dashboard", icon: <Home size={18} />, path: "/", hideOnMobile: true },
-    { name: "ThinkDaily+", icon: null, isBrain: true, path: "/interview-Pro", hideOnMobile: true },
-    { name: "Calendar", icon: <Calendar size={18} />, path: "/calendar" },
-    { name: "Recent Jobs", icon: <Clock size={18} />, path: "/recent-jobs", hasNotification: true, hideOnMobile: true },
-    { name: "Interview XP", icon: <MessageCircle size={18} />, path: "/interview-experience", hideOnMobile: true },
-    { name: "Set Reminders", icon: <Bell size={18} />, path: "/reminders" },
-    { name: "Notes", icon: <FileText size={18} />, path: "/notes" },
-    { name: "Resources", icon: <Book size={18} />, path: "/resources" },
-    { name: "AI Resume Analyzer", icon: <Search size={18} />, path: "/ai-resume-analyzer" },
-    { name: "Tech Feed", icon: <Rss size={18} />, path: "/tech-Feed", hideOnMobile: true },
-    { name: "Connect with Me", icon: <Target size={18} />, path: "/connect" }
+    { name: "Dashboard",          icon: <Home size={18} />,        path: "/",                    hideOnMobile: true },
+    { name: "ThinkDaily+",        icon: null, isBrain: true,        path: "/interview-Pro",        hideOnMobile: true },
+    { name: "Calendar",           icon: <Calendar size={18} />,    path: "/calendar" },
+    { name: "Recent Jobs",        icon: <Clock size={18} />,       path: "/recent-jobs",          hasNotification: true, hideOnMobile: true },
+    { name: "Interview XP",       icon: <MessageCircle size={18} />, path: "/interview-experience", hideOnMobile: true },
+    { name: "Set Reminders",      icon: <Bell size={18} />,        path: "/reminders" },
+    { name: "AI Mock Interview",  icon: <Video size={18} />,       path: "/mock-interview" },
+    { name: "Notes",              icon: <FileText size={18} />,    path: "/notes" },
+    { name: "Resources",          icon: <Book size={18} />,        path: "/resources" },
+    { name: "AI Resume Analyzer", icon: <Search size={18} />,      path: "/ai-resume-analyzer" },
+    { name: "Tech Feed",          icon: <Rss size={18} />,         path: "/tech-Feed", },
+    { name: "Connect with Me",    icon: <Target size={18} />,      path: "/connect" }
   ];
 
   const bottomNavItems = [
-    { name: "Home", icon: <Home size={20} />, path: "/" },
-    { name: "ThinkDaily+", isBrain: true, path: "/interview-Pro" },
+    { name: "Home",         icon: <Home size={20} />,        path: "/" },
+    { name: "ThinkDaily+",  isBrain: true,                   path: "/interview-Pro" },
     { name: "Interview XP", icon: <MessageCircle size={20} />, path: "/interview-experience" },
-    { name: "Tech Feed", icon: <Rss size={20} />, path: "/tech-Feed" },
-    { name: "Recent Jobs", icon: <Clock size={20} />, path: "/recent-jobs", hasNotification: true },
+    {name:"Tech Feed",       icon: <Rss size={20} />,         path: "/tech-Feed" }, 
+    { name: "Recent Jobs",  icon: <Clock size={20} />,       path: "/recent-jobs",  hasNotification: true },
   ];
 
   const handleImageChange = (e) => {
